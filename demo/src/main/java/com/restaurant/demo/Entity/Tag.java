@@ -1,5 +1,6 @@
 package com.restaurant.demo.Entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -24,7 +25,8 @@ public class Tag {
 
     private String tagDescription;
 
-    // Reverse mapping
+    // Prevent infinite JSON recursion
     @ManyToMany(mappedBy = "tags")
+    @JsonIgnore
     private Set<Restaurant> restaurants;
 }

@@ -1,6 +1,5 @@
 package com.restaurant.demo.Entity;
 
-import com.restaurant.demo.Entity.Tag;
 import com.restaurant.demo.enums.BudgetRange;
 import jakarta.persistence.*;
 import lombok.*;
@@ -28,12 +27,6 @@ public class Restaurant {
     @Column(columnDefinition = "TEXT")
     private String description;
 
-    @Column(nullable = false, unique = true)
-    private String email;
-
-    @Column(name = "password", nullable = false)
-    private String passwordHash;
-
     private String phone;
 
     @Column(columnDefinition = "TEXT")
@@ -56,6 +49,8 @@ public class Restaurant {
     private Boolean boostRequested = false;
 
     private LocalDateTime approvedAt;
+
+   //Relationships
 
     @ManyToMany
     @JoinTable(
