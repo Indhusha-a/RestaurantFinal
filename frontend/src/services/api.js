@@ -1,5 +1,6 @@
 import axios from 'axios';
 
+
 // Base URLs
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8080/api';
 const TOPSIS_URL = process.env.REACT_APP_TOPSIS_URL || 'http://localhost:5000/api';
@@ -397,6 +398,19 @@ export const adminAPI = {
     }
   }
 };
+export const cfAPI = {
+  getRecommendations: async () => {
+    try {
+      const user = JSON.parse(localStorage.getItem("user"));
+      const userId = user?.userId || 1;
+
+      const response = await api.get(`/recommendations/${userId}`);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: 'Failed to fetch CF recommendations' };
+    }
+  }
+};
 
 const API = {
   auth: authAPI,
@@ -405,7 +419,8 @@ const API = {
   explore: exploreAPI,
   group: groupAPI,
   leaderboard: leaderboardAPI,
-  admin: adminAPI
+  admin: adminAPI,
+  cf: cfAPI
 };
 
 export default API;
