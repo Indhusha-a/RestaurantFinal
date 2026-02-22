@@ -7,11 +7,13 @@ import IndividualMode from "./pages/IndividualMode";
 import ExploreMode from "./pages/ExploreMode";
 import GroupMode from "./pages/GroupMode";
 import Profile from "./pages/Profile";
+import Recommendations from "./pages/Recommendations";
 
 function App() {
   return (
     <Router>
       <Routes>
+        
         <Route path="/" element={<Index />} />
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
@@ -20,6 +22,7 @@ function App() {
         <Route path="/dashboard/explore" element={<ExploreMode />} />
         <Route path="/dashboard/group" element={<GroupMode />} />
         <Route path="/profile" element={<Profile />} />
+        <Route path="/recommendations" element={<Recommendations />} />
       </Routes>
     </Router>
   );
