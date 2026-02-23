@@ -83,7 +83,36 @@ export default function Register() {
       setError("Passwords do not match");
       return;
     }
-    // ... (keep other validations)
+
+    if (!form.email.includes('@')) {
+      setError("Email must contain @ symbol");
+      return;
+    }
+
+    if (!/^\d{10}$/.test(form.phone)) {
+      setError("Phone number must be exactly 10 digits");
+      return;
+    }
+
+    if (!/[A-Z]/.test(form.password)) {
+      setError("Password must contain at least one capital letter");
+      return;
+    }
+
+    if (!/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>/?]/.test(form.password)) {
+      setError("Password must contain at least one special character");
+      return;
+    }
+
+    if (usernameAvailable === false) {
+      setError("Username is already taken. Please choose another.");
+      return;
+    }
+
+    if (emailAvailable === false) {
+      setError("Email is already registered. Please use another.");
+      return;
+    }
 
     setIsLoading(true);
     
