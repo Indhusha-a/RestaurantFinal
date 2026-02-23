@@ -19,30 +19,15 @@ export default function Login() {
     e.preventDefault();
     setError("");
     setIsLoading(true);
-    
+
     try {
-      // FIX: Payload now exactly matches LoginRequest.java DTO (usernameOrEmail)
       const response = await authAPI.login({
-        usernameOrEmail: form.identifier, 
-        password: form.password,
-        rememberMe: form.remember
+        usernameOrEmail: form.identifier,
+        password: form.password
       });
-      
+
+      // api.js login() already stores token and user in localStorage
       if (response.token) {
-        localStorage.setItem('token', response.token);
-        
-        // FIX: Backend returns user fields at root level, not nested in 'user' object
-        // Extract user data from root response
-        const userData = {
-          userId: response.userId,
-          username: response.username,
-          email: response.email,
-          firstName: response.firstName,
-          lastName: response.lastName,
-          avatarIcon: response.avatarIcon || 'neutral'
-        };
-        
-        localStorage.setItem('user', JSON.stringify(userData));
         navigate("/dashboard");
       }
     } catch (err) {
@@ -108,7 +93,7 @@ export default function Login() {
             />
             <span className="text-sm">Remember Me</span>
           </label>
-          
+
           <Link to="/forgot-password" className="text-sm text-primary hover:underline">
             Forgot Password?
           </Link>

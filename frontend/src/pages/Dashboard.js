@@ -58,7 +58,7 @@ export default function Dashboard() {
       try {
         const parsedUser = JSON.parse(storedUser);
         // Handle both "firstName" and "username" depending on what backend sends
-        setUserName(parsedUser.firstName || parsedUser.username || "Foodie");
+        setUserName(parsedUser.username || parsedUser.firstName || "Foodie");
       } catch (e) {
         console.error("Error parsing user data", e);
       }
@@ -66,7 +66,7 @@ export default function Dashboard() {
       // 3. Fallback: Fetch profile from API if local storage is empty
       userAPI.getProfile()
         .then(data => {
-          setUserName(data.firstName || data.username || "Foodie");
+          setUserName(data.username || data.firstName || "Foodie");
           localStorage.setItem("user", JSON.stringify(data));
         })
         .catch(err => {
@@ -153,7 +153,7 @@ export default function Dashboard() {
           >
             <ChefHat className="w-10 h-10 text-primary" />
           </motion.div>
-          
+
           <h1 className="text-4xl md:text-5xl font-display font-bold mb-4">
             Welcome back, <span className="text-gradient">{userName}</span>
           </h1>
@@ -165,7 +165,7 @@ export default function Dashboard() {
         <div className="grid md:grid-cols-3 gap-8 max-w-6xl mx-auto">
           {modes.map((mode, index) => {
             const Icon = mode.icon;
-            
+
             return (
               <motion.div
                 key={mode.id}
@@ -176,7 +176,7 @@ export default function Dashboard() {
                 className="group relative"
               >
                 <div className={`absolute inset-0 bg-gradient-to-br ${mode.color} rounded-3xl opacity-0 group-hover:opacity-10 transition-opacity duration-500`} />
-                
+
                 <div className="relative bg-card border border-border rounded-3xl p-8 h-full hover:shadow-2xl transition-all duration-300">
                   <motion.div
                     whileHover={{ scale: 1.1, rotate: 5 }}

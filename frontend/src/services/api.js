@@ -40,7 +40,7 @@ api.interceptors.response.use(
       localStorage.removeItem('token');
       localStorage.removeItem('user');
       if (window.location.pathname !== '/login') {
-         window.location.href = '/login';
+        window.location.href = '/login';
       }
     }
     return Promise.reject(error);
@@ -51,13 +51,7 @@ export const authAPI = {
   register: async (userData) => {
     try {
       const response = await api.post('/auth/register', userData);
-      const actualToken = response.data.token || response.data.data?.token;
-      const userObj = response.data.user || response.data.data?.user || response.data.data;
-      
-      if (actualToken) {
-        localStorage.setItem('token', actualToken);
-        localStorage.setItem('user', JSON.stringify(userObj));
-      }
+      // Do NOT store token here - user redirects to login page after registration
       return response.data;
     } catch (error) {
       throw error.response?.data || { message: 'Registration failed' };
@@ -68,23 +62,21 @@ export const authAPI = {
     try {
       const response = await api.post('/auth/login', credentials);
       const data = response.data;
-      const actualToken = data.token;
-      
-      // FIX: Backend returns user fields at root level, not nested in 'user' object
-      const userObj = {
-        userId: data.userId,
-        username: data.username,
-        email: data.email,
-        firstName: data.firstName,
-        lastName: data.lastName,
-        avatarIcon: data.avatarIcon || 'neutral'
-      };
 
-      if (actualToken) {
-        localStorage.setItem('token', actualToken);
+      // Backend returns user fields at root level (flat structure)
+      if (data.token) {
+        localStorage.setItem('token', data.token);
+        const userObj = {
+          userId: data.userId,
+          username: data.username,
+          email: data.email,
+          firstName: data.firstName,
+          lastName: data.lastName,
+          avatarIcon: data.avatarIcon || 'neutral'
+        };
         localStorage.setItem('user', JSON.stringify(userObj));
       }
-      return { ...data, user: userObj }; // Return with user object for convenience
+      return data;
     } catch (error) {
       throw error.response?.data || { message: 'Login failed' };
     }
