@@ -1,5 +1,6 @@
 package com.restaurant.demo.Entity;
 
+import com.restaurant.demo.enums.Role;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -41,6 +42,10 @@ public class User {
 
     @Builder.Default
     private String avatarIcon = "neutral";
+
+    @Enumerated(EnumType.STRING)
+    @Builder.Default
+    private Role role = Role.USER;
 
     @Builder.Default
     private Boolean isActive = true;

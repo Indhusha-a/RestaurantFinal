@@ -3,9 +3,11 @@ package com.restaurant.demo.Service;
 import com.restaurant.demo.Entity.User;
 import com.restaurant.demo.Entity.Visits;
 import com.restaurant.demo.Entity.Notification;
+import com.restaurant.demo.enums.Role;
 import com.restaurant.demo.Repository.UserRepository;
 import com.restaurant.demo.Repository.VisitsRepository;
 import com.restaurant.demo.Repository.NotificationRepository;
+import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -18,6 +20,23 @@ public class UserService {
     private final UserRepository userRepository;
     private final VisitsRepository visitsRepository;
     private final NotificationRepository notificationRepository;
+
+    // ==================== ADMIN SEEDING ====================
+
+    @PostConstruct
+    public void seedAdmin() {
+        if (!userRepository.existsByUsername("admin")) {
+            User admin = User.builder()
+                    .firstName("System")
+                    .lastName("Admin")
+                    .username("admin")
+                    .email("admin@iamhungry.com")
+                    .password("Admin@123")
+                    .role(Role.ADMIN)
+                    .build();
+            userRepository.save(admin);
+        }
+    }
 
     // ==================== AUTH ====================
 
@@ -89,6 +108,7 @@ public class UserService {
         response.put("firstName", saved.getFirstName());
         response.put("lastName", saved.getLastName());
         response.put("avatarIcon", saved.getAvatarIcon());
+        response.put("role", saved.getRole().name());
         response.put("message", "Registration successful");
         return response;
     }
@@ -124,6 +144,7 @@ public class UserService {
         response.put("firstName", user.getFirstName());
         response.put("lastName", user.getLastName());
         response.put("avatarIcon", user.getAvatarIcon());
+        response.put("role", user.getRole().name());
         response.put("message", "Login successful");
         return response;
     }
@@ -159,6 +180,7 @@ public class UserService {
         profile.put("phoneNumber", user.getPhoneNumber());
         profile.put("gender", user.getGender());
         profile.put("avatarIcon", user.getAvatarIcon());
+        profile.put("role", user.getRole().name());
         profile.put("isActive", user.getIsActive());
         profile.put("createdAt", user.getCreatedAt());
         profile.put("totalVisits", totalVisits);
