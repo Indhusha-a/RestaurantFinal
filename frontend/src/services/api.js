@@ -393,13 +393,29 @@ export const adminAPI = {
 export const cfAPI = {
   getRecommendations: async () => {
     try {
-      const user = JSON.parse(localStorage.getItem("user"));
-      const userId = user?.userId || 1;
+      // Get user from localStorage
+      const storedUser = localStorage.getItem("user");
 
+      if (!storedUser) {
+        throw { message: "User not logged in" };
+      }
+
+      const user = JSON.parse(storedUser);
+
+      if (!user?.userId) {
+        throw { message: "Invalid user session" };
+      }
+
+      const userId = user.userId;
+
+      //  Call backend API
       const response = await api.get(`/recommendations/${userId}`);
+
       return response.data;
+
     } catch (error) {
-      throw error.response?.data || { message: 'Failed to fetch CF recommendations' };
+      console.error("CF API Error:", error);
+      throw error.response?.data || { message: "Failed to fetch CF recommendations" };
     }
   }
 };
