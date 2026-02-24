@@ -23,6 +23,7 @@ function App() {
         <Route path="/dashboard/group" element={<GroupMode />} />
         <Route path="/profile" element={<Profile />} />
         <Route path="/recommendations" element={<Recommendations />} />
+        
       </Routes>
     </Router>
   );
