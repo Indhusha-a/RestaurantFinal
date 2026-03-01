@@ -1,4 +1,6 @@
 package com.restaurant.demo.Repository;
 
-public class GroupRepository {
+import org.springframework.data.jpa.repository.JpaRepository;
+
+public interface GroupRepository extends JpaRepository {
 }
