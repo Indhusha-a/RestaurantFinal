@@ -3,7 +3,6 @@ package com.restaurant.demo.Controller;
 import com.restaurant.demo.Entity.Restaurant;
 import com.restaurant.demo.Service.RestaurantService;
 import org.springframework.web.bind.annotation.*;
-
 import java.util.List;
 
 @RestController
