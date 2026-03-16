@@ -49,7 +49,7 @@ export default function ExploreMode() {
         </motion.div>
 
         <h1 className="text-4xl md:text-5xl font-display font-bold mb-3">
-          AI <span className="text-gradient">Recommendations</span>
+          ML <span className="text-gradient">Recommendations</span>
         </h1>
 
         <p className="text-lg text-muted-foreground">
