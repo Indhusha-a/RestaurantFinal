@@ -26,9 +26,15 @@ export default function Login() {
         password: form.password
       });
 
-      // api.js login() already stores token and user in localStorage
+      // Role-based redirect after login
       if (response.token) {
-        navigate("/dashboard");
+        if (response.role === "ADMIN") {
+          navigate("/admin");
+        } else if (response.role === "REST_OWNER") {
+          navigate("/restaurant-dashboard");
+        } else {
+          navigate("/dashboard");
+        }
       }
     } catch (err) {
       console.error("Login error:", err);
