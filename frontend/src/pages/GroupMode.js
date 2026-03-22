@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import { Users } from "lucide-react";
 import { authAPI, groupAPI, restaurantAPI } from "../services/api";
+import FloatingIcons from "../components/ui/FloatingIcons";
 
 export default function GroupMode() {
   const currentUser = authAPI.getCurrentUser();
@@ -381,7 +382,10 @@ export default function GroupMode() {
 
 
   return (
-    <div className="py-16 px-6">
+  <div className="min-h-screen bg-background relative overflow-x-hidden">
+    <FloatingIcons count={20} />
+
+    <main className="container mx-auto px-4 py-12 relative z-10">
       <motion.div
         initial={{ scale: 0 }}
         animate={{ scale: 1 }}
@@ -791,6 +795,7 @@ export default function GroupMode() {
           )}
         </div>
       </div>
+      </main>
     </div>
   );
 }
