@@ -8,7 +8,6 @@ import ExploreMode from "./pages/ExploreMode";
 import GroupMode from "./pages/GroupMode";
 import Profile from "./pages/Profile";
 
-
 function App() {
   return (
     <Router>

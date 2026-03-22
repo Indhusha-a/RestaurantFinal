@@ -6,6 +6,7 @@ import API from "../services/api";
 export default function ExploreMode() {
 
   const [restaurants, setRestaurants] = useState([]);
+  const [topWeeklyRestaurants, setTopWeeklyRestaurants] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -18,12 +19,21 @@ export default function ExploreMode() {
       setLoading(true);
       setError("");
 
-      const data = await API.cf.getRecommendations();
+      const [recommendationData, topWeeklyData] = await Promise.all([
+        API.cf.getRecommendations(),
+        API.restaurant.getTopWeeklyRestaurants()
+      ]);
 
-      if (Array.isArray(data)) {
-        setRestaurants(data);
+      if (Array.isArray(recommendationData)) {
+        setRestaurants(recommendationData);
       } else {
         setRestaurants([]);
+      }
+
+      if (Array.isArray(topWeeklyData)) {
+        setTopWeeklyRestaurants(topWeeklyData);
+      } else {
+        setTopWeeklyRestaurants([]);
       }
 
     } catch (err) {
@@ -84,70 +94,122 @@ export default function ExploreMode() {
         </div>
       )}
 
-      {/* Recommendation Cards */}
-      {!loading && restaurants.length > 0 && (
-        <>
-          <div className="flex justify-between items-center mb-6">
-            <h2 className="text-xl font-semibold">
-              Recommended for you ({restaurants.length})
-            </h2>
-          </div>
+      {!loading && (topWeeklyRestaurants.length > 0 || restaurants.length > 0) && (
+        <div className="grid lg:grid-cols-[320px_minmax(0,1fr)] gap-8 items-start">
+          <aside className="lg:sticky lg:top-6">
+            <div className="bg-card rounded-2xl border border-border/60 p-5">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-xl font-semibold">Top 10 This Week</h2>
+                <span className="text-xs text-muted-foreground">By points</span>
+              </div>
 
-          <div className="grid md:grid-cols-2 gap-6">
-            {restaurants.map((restaurant, index) => (
-              <motion.div
-                key={restaurant.id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.1 }}
-                className="group bg-card rounded-2xl border-2 border-border/50 overflow-hidden hover:shadow-xl transition-all hover:-translate-y-1"
-              >
-                {/* Image */}
-                <div className="relative h-48 overflow-hidden">
-                  <img
-                    src={
-                      restaurant.image1Path ||
-                      "https://images.unsplash.com/photo-1604382354936-07c5d9983bd3"
-                    }
-                    alt={restaurant.name}
-                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
-                  />
-                  <div className="absolute top-4 right-4 bg-black/60 backdrop-blur-sm text-white px-3 py-1 rounded-full text-sm flex items-center gap-1">
-                    <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
-                    {restaurant.averageRating || "New"}
-                  </div>
+              {topWeeklyRestaurants.length === 0 ? (
+                <p className="text-sm text-muted-foreground">
+                  No weekly top restaurants available right now.
+                </p>
+              ) : (
+                <div className="space-y-3">
+                  {topWeeklyRestaurants.map((restaurant, index) => (
+                    <motion.div
+                      key={restaurant.restaurantId ?? restaurant.id ?? index}
+                      initial={{ opacity: 0, x: -12 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: index * 0.06 }}
+                      className="flex items-start gap-3 rounded-xl border border-border/50 p-3"
+                    >
+                      <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-sm font-semibold text-primary">
+                        {index + 1}
+                      </div>
+
+                      <div className="min-w-0 flex-1">
+                        <h3 className="font-medium truncate">{restaurant.name}</h3>
+                        <p className="text-xs text-muted-foreground truncate">
+                          {restaurant.address || "Colombo"}
+                        </p>
+                        <div className="mt-2 flex items-center justify-between text-xs">
+                          <span className="text-primary font-medium">
+                            {restaurant.points ?? 0} pts
+                          </span>
+                          <span className="flex items-center gap-1 text-muted-foreground">
+                            <Star className="w-3 h-3 fill-yellow-400 text-yellow-400" />
+                            {restaurant.averageRating || "New"}
+                          </span>
+                        </div>
+                      </div>
+                    </motion.div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </aside>
+
+          <section>
+            {restaurants.length > 0 && (
+              <>
+                <div className="flex justify-between items-center mb-6">
+                  <h2 className="text-xl font-semibold">
+                    Recommended for you ({restaurants.length})
+                  </h2>
                 </div>
 
-                {/* Content */}
-                <div className="p-6">
-                  <h3 className="text-xl font-bold mb-2">
-                    {restaurant.name}
-                  </h3>
+                <div className="grid md:grid-cols-2 gap-6">
+                  {restaurants.map((restaurant, index) => (
+                    <motion.div
+                      key={restaurant.id}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: index * 0.1 }}
+                      className="group bg-card rounded-2xl border-2 border-border/50 overflow-hidden hover:shadow-xl transition-all hover:-translate-y-1"
+                    >
+                      {/* Image */}
+                      <div className="relative h-48 overflow-hidden">
+                        <img
+                          src={
+                            restaurant.image1Path ||
+                            "https://images.unsplash.com/photo-1604382354936-07c5d9983bd3"
+                          }
+                          alt={restaurant.name}
+                          className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                        />
+                        <div className="absolute top-4 right-4 bg-black/60 backdrop-blur-sm text-white px-3 py-1 rounded-full text-sm flex items-center gap-1">
+                          <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
+                          {restaurant.averageRating || "New"}
+                        </div>
+                      </div>
 
-                  <p className="text-muted-foreground text-sm mb-4">
-                    {restaurant.description}
-                  </p>
+                      {/* Content */}
+                      <div className="p-6">
+                        <h3 className="text-xl font-bold mb-2">
+                          {restaurant.name}
+                        </h3>
 
-                  <div className="flex items-center gap-4 text-sm text-muted-foreground mb-4">
-                    <span className="flex items-center gap-1">
-                      <MapPin className="w-4 h-4" />
-                      {restaurant.address || "Colombo"}
-                    </span>
+                        <p className="text-muted-foreground text-sm mb-4">
+                          {restaurant.description}
+                        </p>
 
-                    <span className="flex items-center gap-1">
-                      <Phone className="w-4 h-4" />
-                      {restaurant.phone || "N/A"}
-                    </span>
-                  </div>
+                        <div className="flex items-center gap-4 text-sm text-muted-foreground mb-4">
+                          <span className="flex items-center gap-1">
+                            <MapPin className="w-4 h-4" />
+                            {restaurant.address || "Colombo"}
+                          </span>
 
-                  <div className="text-sm font-medium text-primary">
-                     {restaurant.budgetRange}
-                  </div>
+                          <span className="flex items-center gap-1">
+                            <Phone className="w-4 h-4" />
+                            {restaurant.phone || "N/A"}
+                          </span>
+                        </div>
+
+                        <div className="text-sm font-medium text-primary">
+                           {restaurant.budgetRange}
+                        </div>
+                      </div>
+                    </motion.div>
+                  ))}
                 </div>
-              </motion.div>
-            ))}
-          </div>
-        </>
+              </>
+            )}
+          </section>
+        </div>
       )}
     </div>
   );
