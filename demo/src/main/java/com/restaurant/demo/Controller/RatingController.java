@@ -21,4 +21,5 @@ public class RatingController {
 
         return ratingService.rateRestaurant(userId, restaurantId, ratingValue);
     }
+    
 }
