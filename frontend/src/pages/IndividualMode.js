@@ -41,36 +41,57 @@ export default function IndividualMode() {
   // These match the 10 mains + 5 desserts from restaurant registration
 
   const fallbackSpecialties = [
-    // 10 Main Dishes — these are the fixed craving categories
+    // 20 Main Dishes — matches Member 4's restaurant registration pool
     { id: 1, name: "Pizza", emoji: "🍕" },
-    { id: 2, name: "Burger", emoji: "🍔" },
+    { id: 2, name: "Pasta", emoji: "🍝" },
     { id: 3, name: "Kottu", emoji: "🥘" },
     { id: 4, name: "Fried Rice", emoji: "🍚" },
-    { id: 5, name: "Pasta", emoji: "🍝" },
-    { id: 6, name: "Biryani", emoji: "🍛" },
-    { id: 7, name: "Sushi", emoji: "🍣" },
-    { id: 8, name: "Noodles", emoji: "🍜" },
-    { id: 9, name: "Submarine", emoji: "🥖" },
-    { id: 10, name: "Shawarma", emoji: "🌯" },
-    // 5 Desserts
-    { id: 11, name: "Ice Cream", emoji: "🍦" },
-    { id: 12, name: "Cake", emoji: "🍰" },
-    { id: 13, name: "Waffles", emoji: "🧇" },
-    { id: 14, name: "Brownies", emoji: "🍫" },
-    { id: 15, name: "Pancakes", emoji: "🥞" },
+    { id: 5, name: "Burger", emoji: "🍔" },
+    { id: 6, name: "Sushi", emoji: "🍣" },
+    { id: 7, name: "Noodles", emoji: "🍜" },
+    { id: 8, name: "Curry", emoji: "🍛" },
+    { id: 9, name: "BBQ", emoji: "🍖" },
+    { id: 10, name: "Seafood", emoji: "🦐" },
+    { id: 11, name: "Sandwich", emoji: "🥪" },
+    { id: 12, name: "Salad", emoji: "🥗" },
+    { id: 13, name: "Soup", emoji: "🍲" },
+    { id: 14, name: "Steak", emoji: "🥩" },
+    { id: 15, name: "Tacos", emoji: "🌮" },
+    { id: 16, name: "Dosa", emoji: "🫓" },
+    { id: 17, name: "Biryani", emoji: "🍛" },
+    { id: 18, name: "Ramen", emoji: "🍜" },
+    { id: 19, name: "Dim Sum", emoji: "🥟" },
+    { id: 20, name: "Falafel", emoji: "🧆" },
+    // 10 Desserts — matches Member 4's dessert pool
+    { id: 21, name: "Brownies", emoji: "🍫" },
+    { id: 22, name: "Ice Cream", emoji: "🍦" },
+    { id: 23, name: "Cakes", emoji: "🍰" },
+    { id: 24, name: "Pastries", emoji: "🥐" },
+    { id: 25, name: "Pudding", emoji: "🍮" },
+    { id: 26, name: "Cheesecake", emoji: "🍰" },
+    { id: 27, name: "Donuts", emoji: "🍩" },
+    { id: 28, name: "Mousse", emoji: "🍫" },
+    { id: 29, name: "Tiramisu", emoji: "☕" },
+    { id: 30, name: "Gulab Jamun", emoji: "🍯" },
   ];
 
   const fallbackTags = [
+    // 15 Vibe Tags — matches Member 4's restaurant registration pool
     { id: 1, tagName: 'Cozy Cafe', emoji: '☕' },
     { id: 2, tagName: 'Family Friendly', emoji: '👨‍👩‍👧‍👦' },
     { id: 3, tagName: 'Romantic', emoji: '❤️' },
-    { id: 4, tagName: 'Fast Casual', emoji: '🍔' },
-    { id: 5, tagName: 'Fine Dining', emoji: '🍽️' },
-    { id: 6, tagName: 'Street Food', emoji: '🌮' },
-    { id: 7, tagName: 'Rooftop', emoji: '🌃' },
-    { id: 8, tagName: 'Buffet', emoji: '🍱' },
-    { id: 9, tagName: 'Outdoor Seating', emoji: '🌿' },
-    { id: 10, tagName: 'Live Music', emoji: '🎵' }
+    { id: 4, tagName: 'Fine Dining', emoji: '🍽️' },
+    { id: 5, tagName: 'Street Food', emoji: '🌮' },
+    { id: 6, tagName: 'Casual', emoji: '😊' },
+    { id: 7, tagName: 'Trendy', emoji: '✨' },
+    { id: 8, tagName: 'Quiet', emoji: '🤫' },
+    { id: 9, tagName: 'Lively', emoji: '🎉' },
+    { id: 10, tagName: 'Outdoor', emoji: '🌿' },
+    { id: 11, tagName: 'Rooftop', emoji: '🌃' },
+    { id: 12, tagName: 'Budget Friendly', emoji: '💸' },
+    { id: 13, tagName: 'Luxury', emoji: '💎' },
+    { id: 14, tagName: 'Fast Food', emoji: '🍟' },
+    { id: 15, tagName: 'Healthy', emoji: '🥦' }
   ];
 
   // ==================== LOAD DATA ON MOUNT ====================
@@ -189,6 +210,7 @@ export default function IndividualMode() {
     setSuccessMessage("");
     setSelectedRestaurant(null);
     setIsConfirmed(false);
+    navigate("/dashboard");
   };
 
   // Reset all filters
@@ -472,13 +494,24 @@ export default function IndividualMode() {
                       </div>
 
                       {/* Tags display */}
-                      <div className="flex flex-wrap gap-1.5 mb-4">
+                      <div className="flex flex-wrap gap-1.5 mb-2">
                         {(restaurant.tags || []).map((tagName, i) => (
                           <span key={i} className="px-2 py-0.5 bg-primary/5 border border-primary/10 rounded-full text-xs">
                             🏷️ {tagName}
                           </span>
                         ))}
                       </div>
+
+                      {/* Specialties display */}
+                      {(restaurant.specialties || []).length > 0 && (
+                        <div className="flex flex-wrap gap-1.5 mb-4">
+                          {restaurant.specialties.map((spec, i) => (
+                            <span key={i} className="px-2 py-0.5 bg-orange-50 border border-orange-200 rounded-full text-xs">
+                              🍽️ {spec}
+                            </span>
+                          ))}
+                        </div>
+                      )}
 
                       <motion.button
                         whileHover={{ scale: 1.02 }}

@@ -4,7 +4,8 @@ import { useNavigate } from "react-router-dom";
 import { User, Compass, Users, Bell, LogOut, Sparkles, ArrowRight, ChefHat } from "lucide-react";
 import { Link } from "react-router-dom";
 import FloatingIcons from "../components/ui/FloatingIcons";
-import { userAPI } from "../services/api"; // Import API to fetch real name if needed
+import { userAPI } from "../services/api";
+import axios from 'axios';
 
 const modes = [
   {
@@ -40,8 +41,10 @@ const modes = [
 ];
 
 export default function Dashboard() {
-  const [notifications, setNotifications] = useState(3);
-  const [userName, setUserName] = useState(""); // Removed "John" default
+  const [notifications, setNotifications] = useState(0);
+  const [userName, setUserName] = useState("");
+  const [userAvatar, setUserAvatar] = useState("neutral");
+  const [isNewUser, setIsNewUser] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -57,8 +60,8 @@ export default function Dashboard() {
     if (storedUser) {
       try {
         const parsedUser = JSON.parse(storedUser);
-        // Handle both "firstName" and "username" depending on what backend sends
-        setUserName(parsedUser.username || parsedUser.firstName || "Foodie");
+        setUserName(parsedUser.firstName || parsedUser.username || "Foodie");
+        setUserAvatar(parsedUser.avatarIcon || "neutral");
       } catch (e) {
         console.error("Error parsing user data", e);
       }
@@ -66,7 +69,8 @@ export default function Dashboard() {
       // 3. Fallback: Fetch profile from API if local storage is empty
       userAPI.getProfile()
         .then(data => {
-          setUserName(data.username || data.firstName || "Foodie");
+          setUserName(data.firstName || data.username || "Foodie");
+          setUserAvatar(data.avatarIcon || "neutral");
           localStorage.setItem("user", JSON.stringify(data));
         })
         .catch(err => {
@@ -78,6 +82,21 @@ export default function Dashboard() {
             navigate("/login");
           }
         });
+    }
+    // Fetch real unread notification count
+    if (token && token !== 'undefined') {
+      axios.get('http://localhost:8080/api/users/notifications/unread-count', {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+        .then(res => setNotifications(res.data?.count || 0))
+        .catch(() => {});
+    }
+
+    // Check if this is a first-time user (just registered)
+    const newUserFlag = localStorage.getItem('isNewUser');
+    if (newUserFlag === 'true') {
+      setIsNewUser(true);
+      localStorage.removeItem('isNewUser');
     }
   }, [navigate]);
 
@@ -130,9 +149,12 @@ export default function Dashboard() {
             <Link to="/profile">
               <motion.div
                 whileHover={{ scale: 1.05 }}
-                className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center cursor-pointer"
+                className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center cursor-pointer text-lg"
               >
-                <User className="w-5 h-5 text-primary" />
+                {userAvatar === 'chef' ? '🧑‍🍳' :
+                 userAvatar === 'happy' ? '😊' :
+                 userAvatar === 'cool' ? '😎' :
+                 userAvatar === 'foodie' ? '🍔' : '👤'}
               </motion.div>
             </Link>
           </div>
@@ -155,10 +177,17 @@ export default function Dashboard() {
           </motion.div>
 
           <h1 className="text-4xl md:text-5xl font-display font-bold mb-4">
-            Welcome back, <span className="text-gradient">{userName}</span>
+            {isNewUser ? (
+              <>Hey there, <span className="text-gradient">{userName}</span>! Let's find your first spot 🍽️</>
+            ) : (
+              <>Welcome back, <span className="text-gradient">{userName}</span></>
+            )}
           </h1>
           <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-            How would you like to discover restaurants today?
+            {isNewUser
+              ? "Pick a mode below to start discovering amazing restaurants!"
+              : "How would you like to discover restaurants today?"
+            }
           </p>
         </motion.div>
 

@@ -180,6 +180,7 @@ export default function Profile() {
                 {user.avatarIcon === "chef" ? "🧑‍🍳" : 
                  user.avatarIcon === "neutral" ? "👤" :
                  user.avatarIcon === "happy" ? "😊" :
+                 user.avatarIcon === "smile" ? "😊" :
                  user.avatarIcon === "cool" ? "😎" :
                  user.avatarIcon === "foodie" ? "🍔" : "👤"}
               </motion.div>
@@ -426,7 +427,55 @@ export default function Profile() {
         )}
       </AnimatePresence>
       
-      {/* Delete Confirm Modal (omitted for brevity, assume unchanged) */}
+      {/* Delete Confirm Modal */}
+      <AnimatePresence>
+        {showDeleteConfirm && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
+            onClick={() => setShowDeleteConfirm(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.9, y: 20 }}
+              className="bg-card rounded-3xl max-w-md w-full p-6 border-2 border-border/50"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center">
+                  <AlertTriangle className="w-6 h-6 text-red-500" />
+                </div>
+                <h2 className="text-2xl font-display font-bold">Delete Account</h2>
+              </div>
+              
+              <p className="text-muted-foreground mb-2">
+                Are you sure you want to request account deletion?
+              </p>
+              <p className="text-sm text-muted-foreground mb-6">
+                This action will send a request to the admin for approval. Once approved, all your data including visit history and ratings will be permanently removed.
+              </p>
+
+              <div className="flex gap-3">
+                <button
+                  onClick={handleDeleteRequest}
+                  className="flex-1 py-3 bg-red-500 hover:bg-red-600 text-white rounded-xl font-semibold transition-colors"
+                >
+                  Yes, Request Deletion
+                </button>
+                <button
+                  onClick={() => setShowDeleteConfirm(false)}
+                  className="flex-1 py-3 border-2 border-border/50 rounded-xl font-semibold hover:bg-muted transition-all"
+                >
+                  Cancel
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
