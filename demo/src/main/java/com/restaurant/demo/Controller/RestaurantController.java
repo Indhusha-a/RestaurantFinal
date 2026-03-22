@@ -41,6 +41,15 @@ public class RestaurantController {
         return restaurantService.getRestaurantById(id);
     }
 
+    @GetMapping("/top-weekly")
+    public ResponseEntity<?> getTopRestaurantsOfTheWeek() {
+        try {
+            return ResponseEntity.ok(restaurantService.getTopRestaurantsOfTheWeek());
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
+        }
+    }
+
     // ==================== INDIVIDUAL MODE - TAG & SPECIALTY ENDPOINTS
     // ====================
 

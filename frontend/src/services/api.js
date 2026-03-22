@@ -159,6 +159,15 @@ export const userAPI = {
 };
 
 export const restaurantAPI = {
+  getTopWeeklyRestaurants: async () => {
+    try {
+      const response = await api.get('/restaurants/top-weekly');
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: 'Failed to fetch top weekly restaurants' };
+    }
+  },
+
   getTags: async () => {
     try {
       const response = await api.get('/restaurants/tags');

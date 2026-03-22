@@ -36,6 +36,13 @@ public class RestaurantService {
                 .orElseThrow(() -> new RuntimeException("Restaurant not found"));
     }
 
+    public List<Map<String, Object>> getTopRestaurantsOfTheWeek() {
+        return restaurantRepository.findTop10ByIsApprovedTrueAndIsActiveTrueOrderByPointsDescIdAsc()
+                .stream()
+                .map(this::buildRestaurantCardWithPoints)
+                .collect(Collectors.toList());
+    }
+
     // ==================== INDIVIDUAL MODE FILTERING ====================
 
     // Filters approved restaurants by craving, budget and vibe tags
@@ -144,6 +151,12 @@ public class RestaurantService {
                 ? r.getSpecialities().stream().map(Speciality::getName).collect(Collectors.toList())
                 : Collections.emptyList());
 
+        return card;
+    }
+
+    private Map<String, Object> buildRestaurantCardWithPoints(Restaurant restaurant) {
+        Map<String, Object> card = buildRestaurantCard(restaurant);
+        card.put("points", restaurant.getPoints() != null ? restaurant.getPoints() : 0);
         return card;
     }
 
