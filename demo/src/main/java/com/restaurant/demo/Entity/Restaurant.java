@@ -50,6 +50,7 @@ public class Restaurant {
 
     private LocalDateTime approvedAt;
 
+
    //Relationships
 
     @ManyToMany

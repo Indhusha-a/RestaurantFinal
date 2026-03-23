@@ -140,7 +140,7 @@ export default function AddRestaurant() {
         formData.append("image", form.image);
       }
 
-      const response = await fetch("http://localhost:8080/api/restaurants", {
+      const response = await fetch("http://localhost:8080/api/admin/restaurants", {
         method: "POST",
         body: formData,
       });

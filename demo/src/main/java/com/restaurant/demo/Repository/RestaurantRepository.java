@@ -10,6 +10,7 @@ import java.util.List;
 
 public interface RestaurantRepository extends JpaRepository<Restaurant, Long> {
 
+    List<Restaurant> findAllByOrderByIdDesc();
     // ==================== INDIVIDUAL MODE QUERIES ====================
 
     // Only approved and active restaurants are visible to users

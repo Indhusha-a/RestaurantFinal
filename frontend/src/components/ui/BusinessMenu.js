@@ -2,10 +2,12 @@ import { useState } from "react";
 import { motion } from "framer-motion";
 import { Briefcase, ChevronDown } from "lucide-react";
 import ComingSoonModal from "./ComingSoonModal";
+import { useNavigate } from "react-router-dom";
 
 export default function BusinessMenu() {
   const [open, setOpen] = useState(false);
   const [modalTitle, setModalTitle] = useState("");
+  const navigate = useNavigate();
 
   const handleClick = (title) => {
     setModalTitle(title);
@@ -46,11 +48,14 @@ export default function BusinessMenu() {
               Restaurant Signup
             </button>
             <button
-              onClick={() => { setModalTitle("Admin Login"); setOpen(false); setModalOpen(true); }}
+                  onClick={() => {
+                  setOpen(false);
+                  navigate("/admin-login");
+              }}
               className="block w-full text-left px-4 py-3 hover:bg-muted transition"
-            >
+              >
               Admin Login
-            </button>
+           </button>
           </motion.div>
         )}
       </div>

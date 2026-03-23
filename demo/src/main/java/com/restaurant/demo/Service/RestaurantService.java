@@ -24,6 +24,7 @@ public class RestaurantService {
     // ==================== BASIC CRUD ====================
 
     public Restaurant registerRestaurant(Restaurant restaurant) {
+
         return restaurantRepository.save(restaurant);
     }
 

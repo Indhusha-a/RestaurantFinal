@@ -381,6 +381,32 @@ export const leaderboardAPI = {
 };
 
 export const adminAPI = {
+  login: async (credentials) => {
+    try {
+      const response = await api.post('/admin/login', credentials);
+      const data = response.data;
+
+      if (data.token) {
+        localStorage.setItem('token', data.token);
+
+        const userObj = {
+          userId: data.userId,
+          username: data.username,
+          email: data.email,
+          firstName: data.firstName,
+          lastName: data.lastName,
+          role: data.role
+        };
+
+        localStorage.setItem('user', JSON.stringify(userObj));
+      }
+
+      return data;
+    } catch (error) {
+      throw error.response?.data || { message: 'Admin login failed' };
+    }
+  },
+
   getPendingRestaurants: async () => {
     try {
       const response = await api.get('/admin/restaurants/pending');
@@ -408,6 +434,7 @@ export const adminAPI = {
     }
   }
 };
+
 export const cfAPI = {
   getRecommendations: async () => {
     try {

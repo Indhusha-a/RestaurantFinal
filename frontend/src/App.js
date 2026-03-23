@@ -13,6 +13,7 @@ import RestaurantApproval from "./pages/Admin/RestaurantApproval";
 import UserManagement from "./pages/Admin/UserManagement";
 import BoostRequests from "./pages/Admin/BoostRequests";
 import AddRestaurant from "./pages/Admin/AddRestaurants";
+import AdminLogin from "./pages/Admin/AdminLogin";
 
 function App() {
   return (
@@ -34,6 +35,7 @@ function App() {
         <Route path="/admin/boosts" element={<BoostRequests />} />
         <Route path="/admin/users" element={<UserManagement />} />
         <Route path="/admin/restaurants" element={<RestaurantApproval />} />
+        <Route path="/admin-login" element={<AdminLogin />} />
         <Route  /> 
       </Routes>
     </Router>
