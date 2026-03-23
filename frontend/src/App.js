@@ -9,7 +9,7 @@ import GroupMode from "./pages/GroupMode";
 import Profile from "./pages/Profile";
 import AdminDashboard from "./pages/Admin/AdminDashboard";
 import ManageRestaurants from "./pages/Admin/ManageRestaurants";
-// import RestaurantApproval from "./pages/Admin/RestaurantApproval";
+import RestaurantApproval from "./pages/Admin/RestaurantApproval";
 import UserManagement from "./pages/Admin/UserManagement";
 import BoostRequests from "./pages/Admin/BoostRequests";
 import AddRestaurant from "./pages/Admin/AddRestaurants";
@@ -33,8 +33,8 @@ function App() {
         <Route path="/admin/add-restaurant" element={<AddRestaurant />} />
         <Route path="/admin/boosts" element={<BoostRequests />} />
         <Route path="/admin/users" element={<UserManagement />} />
-        {/* <Route path="/admin/restaurants" element={<RestaurantApproval />} />
-        <Route path="/admin/add-restaurant" element={<AddRestaurant />} /> */}
+        <Route path="/admin/restaurants" element={<RestaurantApproval />} />
+        <Route  /> 
       </Routes>
     </Router>
   );
