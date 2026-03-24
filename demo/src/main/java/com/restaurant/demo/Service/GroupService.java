@@ -70,10 +70,10 @@ public class GroupService {
         User creator = userRepository.findById(request.getCreatedByUserId())
                 .orElseThrow(() -> new RuntimeException("Creator user not found"));
 
-        List<Group> createdGroups = groupRepository.findByCreatedBy(creator);
-        if (!createdGroups.isEmpty()) {
-            throw new RuntimeException("A user can create only one group");
-        }
+        // List<Group> createdGroups = groupRepository.findByCreatedBy(creator);
+        // if (!createdGroups.isEmpty()) {
+        //     throw new RuntimeException("A user can create only one group");
+        // }
 
         Group group = Group.builder()
                 .groupName(request.getGroupName())

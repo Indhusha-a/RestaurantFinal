@@ -6,6 +6,7 @@ import FloatingIcons from "../components/ui/FloatingIcons";
 
 export default function GroupMode() {
   const currentUser = authAPI.getCurrentUser();
+  const currentUserId = currentUser?.userId;
 
   const [groupName, setGroupName] = useState("");
   const [groups, setGroups] = useState([]);
@@ -13,7 +14,7 @@ export default function GroupMode() {
   const [members, setMembers] = useState([]);
   const [inviteUsername, setInviteUsername] = useState("");
   const [invitations, setInvitations] = useState([]);
-  const [sessionId , setSessionId] = useState("");
+  const [sessionId, setSessionId] = useState("");
   const [tags, setTags] = useState([]);
   const [restaurants, setRestaurants] = useState([]);
   const [result, setResult] = useState(null);
@@ -33,8 +34,12 @@ export default function GroupMode() {
     isLiked: true
   });
 
-  const currentUserId = currentUser?.userId;
-
+  // UI flow states
+  const [sessionStarted, setSessionStarted] = useState(false);
+  const [preferenceSubmitted, setPreferenceSubmitted] = useState(false);
+  const [voteSubmitted, setVoteSubmitted] = useState(false);
+  const [topsisGenerated, setTopsisGenerated] = useState(false);
+  const [recommendationVoted, setRecommendationVoted] = useState(false);
 
   const getErrorMessage = (error, fallbackMessage) => {
     if (typeof error === "string") return error;
@@ -42,10 +47,6 @@ export default function GroupMode() {
     if (error?.error) return error.error;
     return fallbackMessage;
   };
-
-
-
-
 
   const isLeader = useMemo(() => {
     if (!currentUserId || !members.length) return false;
@@ -64,6 +65,15 @@ export default function GroupMode() {
     return map;
   }, [members]);
 
+  //const showPreferenceSection = sessionStarted;
+  const showPreferenceSection = !!selectedGroup;
+  //const showTagsSection = sessionStarted && !!preferenceForm.budgetRange;
+  const showTagsSection = showPreferenceSection && !!preferenceForm.budgetRange;
+  const showVoteSection = preferenceSubmitted;
+  const showTopsisButton = voteSubmitted;
+  const showTopsisResults = topsisGenerated && topsisResult?.results;
+  const showResultButton = recommendationVoted;
+
   const loadGroups = async () => {
     if (!currentUserId) return;
     try {
@@ -80,7 +90,7 @@ export default function GroupMode() {
       const data = await groupAPI.getInvitations(currentUserId);
       setInvitations(data || []);
     } catch (error) {
-      alert(getErrorMessage(error,"Failed to load invitations"));
+      alert(getErrorMessage(error, "Failed to load invitations"));
     }
   };
 
@@ -109,7 +119,7 @@ export default function GroupMode() {
       const data = await groupAPI.getGroupMembers(groupId);
       setMembers(data || []);
     } catch (error) {
-      alert(getErrorMessage(error,  "Failed to load members"));
+      alert(getErrorMessage(error, "Failed to load members"));
     }
   };
 
@@ -128,6 +138,26 @@ export default function GroupMode() {
     }
   }, [selectedGroup]);
 
+  const resetFlowStates = () => {
+    setSessionId("");
+    setResult(null);
+    setTopsisResult(null);
+    setSessionStarted(false);
+    setPreferenceSubmitted(false);
+    setVoteSubmitted(false);
+    setTopsisGenerated(false);
+    setRecommendationVoted(false);
+    setPreferenceForm({
+      craving: "",
+      budgetRange: "",
+      tagIds: []
+    });
+    setVoteForm({
+      restaurantId: "",
+      isLiked: true
+    });
+  };
+
   const handleCreateGroup = async () => {
     if (!currentUserId) {
       alert("User not logged in");
@@ -145,6 +175,7 @@ export default function GroupMode() {
       await loadGroups();
       setSelectedGroup(created);
       await loadMembers(created.id);
+      resetFlowStates();
     } catch (error) {
       alert(getErrorMessage(error, "Failed to create group"));
     }
@@ -170,6 +201,8 @@ export default function GroupMode() {
       setInviteUsername("");
       setUserSearchResults([]);
       setShowUserSuggestions(false);
+      await loadMembers(selectedGroup.id);
+      await loadInvitations();
     } catch (error) {
       alert(getErrorMessage(error, "Failed to invite user"));
     }
@@ -206,9 +239,15 @@ export default function GroupMode() {
       const session = await groupAPI.startSession(selectedGroup.id, currentUserId);
       setSessionId(String(session.id));
       setResult(null);
+      setTopsisResult(null);
+      setSessionStarted(true);
+      setPreferenceSubmitted(false);
+      setVoteSubmitted(false);
+      setTopsisGenerated(false);
+      setRecommendationVoted(false);
       alert(`Session started. Session ID: ${session.id}`);
     } catch (error) {
-      alert(getErrorMessage(error,"Failed to start session"));
+      alert(getErrorMessage(error, "Failed to start session"));
     }
   };
 
@@ -254,6 +293,7 @@ export default function GroupMode() {
         preferenceForm.tagIds
       );
       alert("Preference submitted");
+      setPreferenceSubmitted(true);
     } catch (error) {
       alert(getErrorMessage(error, "Failed to submit preference"));
     }
@@ -277,6 +317,7 @@ export default function GroupMode() {
         voteForm.isLiked
       );
       alert("Vote submitted");
+      setVoteSubmitted(true);
     } catch (error) {
       alert(getErrorMessage(error, "Failed to submit vote"));
     }
@@ -292,18 +333,11 @@ export default function GroupMode() {
       const data = await groupAPI.getSessionResults(Number(sessionId));
       setResult(data);
     } catch (error) {
-      alert(getErrorMessage(error,"Failed to load results"));
+      alert(getErrorMessage(error, "Failed to load results"));
     }
   };
 
-
-
-
-
-
-
-
-    const handleSearchInviteUsers = async (value) => {
+  const handleSearchInviteUsers = async (value) => {
     setInviteUsername(value);
 
     if (!selectedGroup?.id || !value.trim()) {
@@ -327,9 +361,7 @@ export default function GroupMode() {
     }
   };
 
-
-
-    const handleGenerateTopsis = async () => {
+  const handleGenerateTopsis = async () => {
     if (!sessionId) {
       alert("No session selected");
       return;
@@ -338,15 +370,12 @@ export default function GroupMode() {
     try {
       const data = await groupAPI.generateTopsisRecommendations(Number(sessionId));
       setTopsisResult(data);
+      setTopsisGenerated(true);
       alert("TOPSIS recommendations generated");
     } catch (error) {
       alert(getErrorMessage(error, "Failed to generate TOPSIS recommendations"));
     }
   };
-
-
-
-
 
   const handleVoteFromRecommendation = async (restaurantId, isLiked) => {
     if (!sessionId) {
@@ -361,164 +390,155 @@ export default function GroupMode() {
         Number(restaurantId),
         isLiked
       );
+      setRecommendationVoted(true);
       alert(`Vote submitted for restaurant ${restaurantId}`);
     } catch (error) {
       alert(getErrorMessage(error, "Failed to submit vote"));
     }
   };
 
+  const budgetOptions = [
+    { value: "ZERO_TO_1000", label: "Rs. 0 - Rs. 1000" },
+    { value: "ONE_TO_2000", label: "Rs. 1000 - Rs. 2000" },
+    { value: "TWO_TO_5000", label: "Rs. 2000 - Rs. 5000" },
+    { value: "FIVE_THOUSAND_PLUS", label: "Rs. 5000 +" }
+  ];
 
 
 
 
-
-
-
-
-
-
-
-
-
+    // craving tags
+      const cravingOptions = [
+      "Burger",
+      "Pizza",
+      "Kottu",
+      "Rice and Curry",
+      "Pasta",
+      "Noodles",
+      "Seafood",
+      "Desserts",
+      "Cafe Food"
+    ];
 
   return (
-  <div className="min-h-screen bg-background relative overflow-x-hidden">
-    <FloatingIcons count={20} />
+    <div className="min-h-screen bg-background relative overflow-x-hidden">
+      <FloatingIcons count={20} />
 
-    <main className="container mx-auto px-4 py-12 relative z-10">
-      <motion.div
-        initial={{ scale: 0 }}
-        animate={{ scale: 1 }}
-        transition={{ type: "spring" }}
-        className="w-24 h-24 mx-auto bg-primary/10 rounded-full flex items-center justify-center mb-6"
-      >
-        <Users className="w-12 h-12 text-primary" />
-      </motion.div>
+      <main className="container mx-auto px-4 py-12 relative z-10">
+        <motion.div
+          initial={{ scale: 0 }}
+          animate={{ scale: 1 }}
+          transition={{ type: "spring" }}
+          className="w-24 h-24 mx-auto bg-primary/10 rounded-full flex items-center justify-center mb-6"
+        >
+          <Users className="w-12 h-12 text-primary" />
+        </motion.div>
 
-      <h2 className="text-3xl font-display font-bold text-center mb-3">
-        Group Mode
-      </h2>
+        <h2 className="text-3xl font-display font-bold text-center mb-3">
+          Group Mode
+        </h2>
 
-      <p className="text-center mb-8 text-gray-600">
-        Logged in as: <strong>{currentUser?.username || "Unknown user"}</strong>
-      </p>
+        <p className="text-center mb-8 text-gray-600">
+          Logged in as: <strong>{currentUser?.username || "Unknown user"}</strong>
+        </p>
 
-      <div className="grid md:grid-cols-2 gap-8 max-w-6xl mx-auto">
-        <div className="space-y-6">
-          <div className="border rounded-lg p-4 bg-white shadow">
-            <h3 className="text-lg font-bold mb-3">Create Group</h3>
-            <input
-              type="text"
-              placeholder="Enter group name"
-              value={groupName}
-              onChange={(e) => setGroupName(e.target.value)}
-              className="w-full border rounded-lg p-3 mb-3"
-            />
-            <button
-              onClick={handleCreateGroup}
-              className="w-full bg-primary text-white py-3 rounded-lg"
-            >
-              Create Group
-            </button>
-          </div>
-
-          <div className="border rounded-lg p-4 bg-white shadow">
-            <h3 className="text-lg font-bold mb-3">My Groups</h3>
-            {groups.length === 0 ? (
-              <p className="text-gray-500">No groups found.</p>
-            ) : (
-              groups.map((group) => (
-                <div
-                  key={group.id}
-                  onClick={() => {
-                    setSelectedGroup(group);
-                    setResult(null);
-                    setTopsisResult(null);
-                  }}
-                  className={`border rounded p-3 mb-2 cursor-pointer ${
-                    selectedGroup?.id === group.id ? "bg-blue-50 border-blue-500" : ""
-                  }`}
-                >
-                  <p className="font-semibold">{group.groupName}</p>
-                  <p className="text-sm text-gray-600">Group ID: {group.id}</p>
-                </div>
-              ))
-            )}
-          </div>
-
-          <div className="border rounded-lg p-4 bg-white shadow">
-            <h3 className="text-lg font-bold mb-3">My Invitations</h3>
-            {invitations.length === 0 ? (
-              <p className="text-gray-500">No invitations found.</p>
-            ) : (
-              invitations.map((inv) => (
-                <div key={inv.id} className="border rounded p-3 mb-2">
-                  <p>
-                    Group: <strong>{inv.group?.groupName}</strong>
-                  </p>
-                  <p>Status: {inv.status}</p>
-                  {inv.status === "PENDING" && (
-                    <div className="flex gap-2 mt-2">
-                      <button
-                        onClick={() => handleAcceptInvitation(inv.id)}
-                        className="bg-green-600 text-white px-3 py-2 rounded"
-                      >
-                        Accept
-                      </button>
-                      <button
-                        onClick={() => handleRejectInvitation(inv.id)}
-                        className="bg-red-600 text-white px-3 py-2 rounded"
-                      >
-                        Reject
-                      </button>
-                    </div>
-                  )}
-                </div>
-              ))
-            )}
-          </div>
-        </div>
-
-        <div className="space-y-6">
-          {selectedGroup && (
+        <div className="grid md:grid-cols-2 gap-8 max-w-6xl mx-auto">
+          <div className="space-y-6">
             <div className="border rounded-lg p-4 bg-white shadow">
-              <h3 className="text-lg font-bold mb-3">
-                Selected Group: {selectedGroup.groupName}
-              </h3>
+              <h3 className="text-lg font-bold mb-3">Create Group</h3>
+              <input
+                type="text"
+                placeholder="Enter group name"
+                value={groupName}
+                onChange={(e) => setGroupName(e.target.value)}
+                className="w-full border rounded-lg p-3 mb-3"
+              />
+              <button
+                onClick={handleCreateGroup}
+                className="w-full bg-primary text-white py-3 rounded-lg"
+              >
+                Create Group
+              </button>
+            </div>
 
-              <p className="font-semibold mb-2">Members</p>
-              {members.length === 0 ? (
-                <p className="text-gray-500">No members loaded.</p>
+            <div className="border rounded-lg p-4 bg-white shadow">
+              <h3 className="text-lg font-bold mb-3">My Groups</h3>
+              {groups.length === 0 ? (
+                <p className="text-gray-500">No groups found.</p>
               ) : (
-                <ul className="list-disc pl-5 mb-4">
-                  {members.map((member) => (
-                    <li key={member.id}>
-                      {member.user?.username} - {member.role}
-                    </li>
-                  ))}
-                </ul>
+                groups.map((group) => (
+                  <div
+                    key={group.id}
+                    onClick={() => {
+                      setSelectedGroup(group);
+                      resetFlowStates();
+                    }}
+                    className={`border rounded p-3 mb-2 cursor-pointer ${
+                      selectedGroup?.id === group.id ? "bg-blue-50 border-blue-500" : ""
+                    }`}
+                  >
+                    <p className="font-semibold">{group.groupName}</p>
+                    <p className="text-sm text-gray-600">Group ID: {group.id}</p>
+                  </div>
+                ))
               )}
+            </div>
 
-              {isLeader && (
-                <>
-                  <div className="mb-4">
-                    {/* <input
-                      type="text"
-                      placeholder="Enter username to invite"
-                      value={inviteUsername}
-                      onChange={(e) => setInviteUsername(e.target.value)}
-                      className="w-full border rounded p-3 mb-2"
-                    />
-                    <button
-                      onClick={handleInvite}
-                      className="bg-blue-600 text-white px-4 py-2 rounded w-full"
-                    >
-                      Invite by Username
-                    </button> */}
+            <div className="border rounded-lg p-4 bg-white shadow">
+              <h3 className="text-lg font-bold mb-3">My Invitations</h3>
+              {invitations.length === 0 ? (
+                <p className="text-gray-500">No invitations found.</p>
+              ) : (
+                invitations.map((inv) => (
+                  <div key={inv.id} className="border rounded p-3 mb-2">
+                    <p>
+                      Group: <strong>{inv.group?.groupName}</strong>
+                    </p>
+                    <p>Status: {inv.status}</p>
+                    {inv.status === "PENDING" && (
+                      <div className="flex gap-2 mt-2">
+                        <button
+                          onClick={() => handleAcceptInvitation(inv.id)}
+                          className="bg-green-600 text-white px-3 py-2 rounded"
+                        >
+                          Accept
+                        </button>
+                        <button
+                          onClick={() => handleRejectInvitation(inv.id)}
+                          className="bg-red-600 text-white px-3 py-2 rounded"
+                        >
+                          Reject
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
 
+          <div className="space-y-6">
+            {selectedGroup && (
+              <div className="border rounded-lg p-4 bg-white shadow">
+                <h3 className="text-lg font-bold mb-3">
+                  Selected Group: {selectedGroup.groupName}
+                </h3>
 
+                <p className="font-semibold mb-2">Members</p>
+                {members.length === 0 ? (
+                  <p className="text-gray-500">No members loaded.</p>
+                ) : (
+                  <ul className="list-disc pl-5 mb-4">
+                    {members.map((member) => (
+                      <li key={member.id}>
+                        {member.user?.username} - {member.role}
+                      </li>
+                    ))}
+                  </ul>
+                )}
 
-
+                {isLeader && (
+                  <>
                     <div className="relative mb-4">
                       <input
                         type="text"
@@ -552,176 +572,168 @@ export default function GroupMode() {
                         </div>
                       )}
 
-                      {showUserSuggestions && inviteUsername.trim() && userSearchResults.length === 0 && (
-                        <div className="absolute z-10 w-full bg-white border rounded shadow px-3 py-2 text-sm text-gray-500">
-                          No matching users found
-                        </div>
-                      )}
+                      {showUserSuggestions &&
+                        inviteUsername.trim() &&
+                        userSearchResults.length === 0 && (
+                          <div className="absolute z-10 w-full bg-white border rounded shadow px-3 py-2 text-sm text-gray-500">
+                            No matching users found
+                          </div>
+                        )}
                     </div>
 
                     <button
                       onClick={handleInvite}
-                      className="bg-blue-600 text-white px-4 py-2 rounded w-full"
+                      className="bg-blue-600 text-white px-4 py-2 rounded w-full mb-3"
                     >
                       Invite by Username
                     </button>
-                  </div>
 
-                  <button
-                    onClick={handleStartSession}
-                    className="bg-green-600 text-white px-4 py-2 rounded w-full"
-                  >
-                    Start Session
-                  </button>
-                </>
-              )}
-            </div>
-          )}
+                    <button
+                      onClick={handleStartSession}
+                      className="bg-green-600 text-white px-4 py-2 rounded w-full"
+                    >
+                      Start Session
+                    </button>
+                  </>
+                )}
+              </div>
+            )}
 
-          <div className="border rounded-lg p-4 bg-white shadow">
-            <h3 className="text-lg font-bold mb-3">Submit My Preference</h3>
+            {showPreferenceSection && (
+              <div className="border rounded-lg p-4 bg-white shadow">
+                <h3 className="text-lg font-bold mb-3">Submit My Preference</h3>
 
-            <input
-              type="number"
-              placeholder="Enter active session ID"
-              value={sessionId}
-              onChange={(e) => setSessionId(e.target.value)}
-              className="w-full border rounded p-3 mb-3"
-            />
+                <input
+                  type="number"
+                  placeholder="Enter active session ID"
+                  value={sessionId}
+                  onChange={(e) => setSessionId(e.target.value)}
+                  className="w-full border rounded p-3 mb-3"
+                />
 
-
-            <input
-              type="text"
-              placeholder="Craving"
-              value={preferenceForm.craving}
-              onChange={(e) =>
-                setPreferenceForm((prev) => ({ ...prev, craving: e.target.value }))
-              }
-              className="w-full border rounded p-3 mb-3"
-            />
-
-            <select
-              value={preferenceForm.budgetRange}
-              onChange={(e) =>
-                setPreferenceForm((prev) => ({ ...prev, budgetRange: e.target.value }))
-              }
-              className="w-full border rounded p-3 mb-3"
-            >
-              <option value="">Select Budget</option>
-              <option value="ZERO_TO_1000">ZERO_TO_1000</option>
-              <option value="ONE_TO_2000">ONE_TO_2000</option>
-              <option value="TWO_TO_5000">TWO_TO_5000</option>
-              <option value="FIVE_THOUSAND_PLUS">FIVE_THOUSAND_PLUS</option>
-            </select>
-
-            <p className="font-semibold mb-2">Select up to 3 tags</p>
-            <div className="flex flex-wrap gap-2 mb-3">
-              {/* {tags.map((tag) => (
-                <button
-                  key={tag.tagId}
-                  type="button"
-                  onClick={() => handleTagToggle(tag.tagId)}
-                  className={`px-3 py-2 rounded border ${
-                    preferenceForm.tagIds.includes(tag.tagId)
-                      ? "bg-blue-600 text-white"
-                      : "bg-white"
-                  }`}
+                <select
+                  value={preferenceForm.craving}
+                  onChange={(e) =>
+                    setPreferenceForm((prev) => ({ ...prev, craving: e.target.value }))
+                  }
+                  className="w-full border rounded p-3 mb-3"
                 >
-                  {tag.tagName}
+                  <option value="">Select Craving</option>
+                  {cravingOptions.map((craving) => (
+                    <option key={craving} value={craving}>
+                      {craving}
+                    </option>
+                  ))}
+                </select>
+
+                <select
+                  value={preferenceForm.budgetRange}
+                  onChange={(e) =>
+                    setPreferenceForm((prev) => ({
+                      ...prev,
+                      budgetRange: e.target.value
+                    }))
+                  }
+                  className="w-full border rounded p-3 mb-3"
+                >
+                  <option value="">Select Budget</option>
+                  {budgetOptions.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+
+                {showTagsSection && (
+                  <>
+                    <p className="font-semibold mb-2">Select up to 3 tags</p>
+                    <div className="flex flex-wrap gap-2 mb-3">
+                      {tags.map((tag) => {
+                        const tagId = tag.tagId ?? tag.id;
+                        const tagName = tag.tagName ?? tag.name;
+
+                        return (
+                          <button
+                            key={tagId}
+                            type="button"
+                            onClick={() => handleTagToggle(tagId)}
+                            className={`px-3 py-2 rounded border ${
+                              preferenceForm.tagIds.includes(tagId)
+                                ? "bg-blue-600 text-white"
+                                : "bg-white"
+                            }`}
+                          >
+                            {tagName}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </>
+                )}
+
+                <button
+                  onClick={handleSubmitPreference}
+                  className="bg-purple-600 text-white px-4 py-2 rounded w-full"
+                >
+                  Submit Preference
                 </button>
-              ))} */}
+              </div>
+            )}
 
-              {tags.map((tag) => {
-                const tagId = tag.tagId ?? tag.id;
-                const tagName = tag.tagName ?? tag.name;
+            {showVoteSection && (
+              <div className="border rounded-lg p-4 bg-white shadow">
+                <h3 className="text-lg font-bold mb-3">Submit Vote</h3>
 
-                return (
-                  <button
-                    key={tagId}
-                    type="button"
-                    onClick={() => handleTagToggle(tagId)}
-                    className={`px-3 py-2 rounded border ${
-                      preferenceForm.tagIds.includes(tagId)
-                        ? "bg-blue-600 text-white"
-                        : "bg-white"
-                    }`}
-                  >
-                    {tagName}
-                  </button>
-                );
-              })}
+                <select
+                  value={voteForm.restaurantId}
+                  onChange={(e) =>
+                    setVoteForm((prev) => ({ ...prev, restaurantId: e.target.value }))
+                  }
+                  className="w-full border rounded p-3 mb-3"
+                >
+                  <option value="">Select Restaurant</option>
+                  {restaurants.map((restaurant) => (
+                    <option key={restaurant.id} value={restaurant.id}>
+                      {restaurant.name}
+                    </option>
+                  ))}
+                </select>
 
+                <select
+                  value={voteForm.isLiked ? "true" : "false"}
+                  onChange={(e) =>
+                    setVoteForm((prev) => ({
+                      ...prev,
+                      isLiked: e.target.value === "true"
+                    }))
+                  }
+                  className="w-full border rounded p-3 mb-3"
+                >
+                  <option value="true">LIKE</option>
+                  <option value="false">DISLIKE</option>
+                </select>
 
+                <button
+                  onClick={handleSubmitVote}
+                  className="bg-red-600 text-white px-4 py-2 rounded w-full"
+                >
+                  Submit Vote
+                </button>
+              </div>
+            )}
 
+            {showTopsisButton && (
+              <div className="border rounded-lg p-4 bg-white shadow">
+                <button
+                  onClick={handleGenerateTopsis}
+                  className="bg-indigo-600 text-white px-4 py-2 rounded w-full"
+                >
+                  Generate TOPSIS Recommendations
+                </button>
+              </div>
+            )}
 
-
-
-
-            </div>
-
-            <button
-              onClick={handleSubmitPreference}
-              className="bg-purple-600 text-white px-4 py-2 rounded w-full"
-            >
-              Submit Preference
-            </button>
-          </div>
-
-          <div className="border rounded-lg p-4 bg-white shadow">
-            <h3 className="text-lg font-bold mb-3">Submit Vote</h3>
-
-            <select
-              value={voteForm.restaurantId}
-              onChange={(e) =>
-                setVoteForm((prev) => ({ ...prev, restaurantId: e.target.value }))
-              }
-              className="w-full border rounded p-3 mb-3"
-            >
-              <option value="">Select Restaurant</option>
-              {restaurants.map((restaurant) => (
-                <option key={restaurant.id} value={restaurant.id}>
-                  {restaurant.name}
-                </option>
-              ))}
-            </select>
-
-            <select
-              value={voteForm.isLiked ? "true" : "false"}
-              onChange={(e) =>
-                setVoteForm((prev) => ({
-                  ...prev,
-                  isLiked: e.target.value === "true"
-                }))
-              }
-              className="w-full border rounded p-3 mb-3"
-            >
-              <option value="true">LIKE</option>
-              <option value="false">DISLIKE</option>
-            </select>
-
-            <button
-              onClick={handleSubmitVote}
-              className="bg-red-600 text-white px-4 py-2 rounded w-full mb-3"
-            >
-              Submit Vote
-            </button>
-
-            <button
-              onClick={handleGenerateTopsis}
-              className="bg-indigo-600 text-white px-4 py-2 rounded w-full mb-3"
-            >
-              Generate TOPSIS Recommendations
-            </button>
-
-            <button
-              onClick={handleGetResults}
-              className="bg-gray-800 text-white px-4 py-2 rounded w-full"
-            >
-              Get Session Result
-            </button>
-          </div>
-
-          {topsisResult?.results && (
+            {showTopsisResults && (
               <div className="border rounded-lg p-4 bg-blue-50 shadow">
                 <h3 className="text-lg font-bold mb-3">TOPSIS Recommendations</h3>
                 <p><strong>Session ID:</strong> {topsisResult.session_id}</p>
@@ -747,7 +759,6 @@ export default function GroupMode() {
                         <p><strong>Restaurant Name:</strong> {restaurant?.name || "Unknown"}</p>
                         <p><strong>TOPSIS Score:</strong> {item.topsis_score}</p>
                         <p><strong>Group Match %:</strong> {item.group_match_percentage}</p>
-
 
                         <div className="flex gap-2 mt-3">
                           <button
@@ -782,19 +793,30 @@ export default function GroupMode() {
               </div>
             )}
 
-          {result && (
-            <div className="border rounded-lg p-4 bg-green-50 shadow">
-              <h3 className="text-lg font-bold mb-3">Session Result</h3>
-              <p><strong>Session ID:</strong> {result.sessionId}</p>
-              <p><strong>Group ID:</strong> {result.groupId}</p>
-              <p><strong>Status:</strong> {result.status}</p>
-              <p><strong>Total Votes:</strong> {result.totalVotes}</p>
-              <p><strong>Winning Restaurant ID:</strong> {result.winningRestaurantId}</p>
-              <p><strong>Winning Restaurant Name:</strong> {result.winningRestaurantName || "Not decided yet"}</p>
-            </div>
-          )}
+            {showResultButton && (
+              <div className="border rounded-lg p-4 bg-white shadow">
+                <button
+                  onClick={handleGetResults}
+                  className="bg-gray-800 text-white px-4 py-2 rounded w-full"
+                >
+                  Get Session Result
+                </button>
+              </div>
+            )}
+
+            {result && (
+              <div className="border rounded-lg p-4 bg-green-50 shadow">
+                <h3 className="text-lg font-bold mb-3">Session Result</h3>
+                <p><strong>Session ID:</strong> {result.sessionId}</p>
+                <p><strong>Group ID:</strong> {result.groupId}</p>
+                <p><strong>Status:</strong> {result.status}</p>
+                <p><strong>Total Votes:</strong> {result.totalVotes}</p>
+                <p><strong>Winning Restaurant ID:</strong> {result.winningRestaurantId}</p>
+                <p><strong>Winning Restaurant Name:</strong> {result.winningRestaurantName || "Not decided yet"}</p>
+              </div>
+            )}
+          </div>
         </div>
-      </div>
       </main>
     </div>
   );
