@@ -129,7 +129,7 @@ export const userAPI = {
   updateProfile: async (profileData) => {
     try {
       const response = await api.put('/users/profile', profileData);
-      const updatedUser = response.data.data || response.data.user;
+      const updatedUser = response.data;
       if (updatedUser) {
         localStorage.setItem('user', JSON.stringify(updatedUser));
       }
@@ -159,6 +159,7 @@ export const userAPI = {
 };
 
 export const restaurantAPI = {
+
   // getTags: async () => {
   //   try {
   //     const response = await api.get('/restaurants/tags');
@@ -173,6 +174,31 @@ export const restaurantAPI = {
     try {
       const response = await api.get('/tags');
       return response.data?.data || response.data;
+    }
+  },
+  getAllRestaurants: async () => {
+    try {
+      const response = await api.get('/restaurants');
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: 'Failed to fetch restaurants' };
+    }
+  },
+
+  getTopWeeklyRestaurants: async () => {
+    try {
+      const response = await api.get('/restaurants/top-weekly');
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: 'Failed to fetch top weekly restaurants' };
+    }
+  },
+
+  getTags: async () => {
+    try {
+      const response = await api.get('/restaurants/tags');
+      return response.data;
+
     } catch (error) {
       throw error.response?.data || { message: 'Failed to fetch tags' };
     }
@@ -181,7 +207,7 @@ export const restaurantAPI = {
   getSpecialties: async () => {
     try {
       const response = await api.get('/restaurants/specialties');
-      return response.data?.data || response.data;
+      return response.data;
     } catch (error) {
       throw error.response?.data || { message: 'Failed to fetch specialties' };
     }
@@ -190,7 +216,7 @@ export const restaurantAPI = {
   filterRestaurants: async (filterData) => {
     try {
       const response = await api.post('/restaurants/filter', filterData);
-      return response.data?.data || response.data;
+      return response.data;
     } catch (error) {
       throw error.response?.data || { message: 'Failed to filter restaurants' };
     }

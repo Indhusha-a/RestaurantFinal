@@ -10,7 +10,6 @@ import com.restaurant.demo.Service.UserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
 import java.util.List;
 import java.util.Map;
 
@@ -40,6 +39,15 @@ public class RestaurantController {
     @GetMapping("/{id}")
     public Restaurant getById(@PathVariable Long id) {
         return restaurantService.getRestaurantById(id);
+    }
+
+    @GetMapping("/top-weekly")
+    public ResponseEntity<?> getTopRestaurantsOfTheWeek() {
+        try {
+            return ResponseEntity.ok(restaurantService.getTopRestaurantsOfTheWeek());
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
+        }
     }
 
     // ==================== INDIVIDUAL MODE - TAG & SPECIALTY ENDPOINTS

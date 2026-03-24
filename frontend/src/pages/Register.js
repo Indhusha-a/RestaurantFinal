@@ -130,8 +130,8 @@ export default function Register() {
       });
       
       setSuccess("Registration successful! Redirecting to login...");
+      localStorage.setItem('isNewUser', 'true');
       
-      // FIX: Redirect to login instead of dashboard to ensure clean state
       setTimeout(() => {
         navigate("/login");
       }, 1500);
@@ -334,7 +334,7 @@ export default function Register() {
           <div>
             <label className="block mb-2 font-medium">Avatar Style</label>
             <div className="flex gap-4">
-              {['neutral', 'smile', 'chef', 'foodie'].map((avatar) => (
+              {['neutral', 'chef', 'happy', 'cool', 'foodie'].map((avatar) => (
                 <button
                   key={avatar}
                   type="button"
@@ -346,7 +346,12 @@ export default function Register() {
                       : 'border-border hover:border-primary/50'
                   }`}
                 >
-                  <Users className="w-6 h-6 mx-auto" />
+                  <span className="text-2xl block text-center">
+                    {avatar === 'neutral' ? '👤' :
+                     avatar === 'chef' ? '🧑‍🍳' :
+                     avatar === 'happy' ? '😊' :
+                     avatar === 'cool' ? '😎' : '🍔'}
+                  </span>
                   <span className="text-xs capitalize mt-1 block text-center">{avatar}</span>
                 </button>
               ))}
