@@ -1,8 +1,8 @@
+import { useState, useEffect } from "react";
 import "../../../styles/admin.css";
 import { NavLink } from "react-router-dom";
 import {
   Bell,
-  Search,
   LayoutDashboard,
   Users,
   PlusCircle,
@@ -11,6 +11,34 @@ import {
 } from "lucide-react";
 
 export default function AdminLayout({ children }) {
+  const [notifications, setNotifications] = useState(0);
+
+  // Load notification count once
+  useEffect(() => {
+    fetchNotifications();
+  }, []);
+
+  // Count pending restaurants + deletion requests
+  const fetchNotifications = async () => {
+    try {
+      const [pendingRes, deletionRes] = await Promise.all([
+        fetch("http://localhost:8080/api/admin/restaurants/pending"),
+        fetch("http://localhost:8080/api/admin/users/deletion-requests"),
+      ]);
+
+      const pending = await pendingRes.json();
+      const deletion = await deletionRes.json();
+
+      const count =
+        (Array.isArray(pending) ? pending.length : 0) +
+        (Array.isArray(deletion) ? deletion.length : 0);
+
+      setNotifications(count);
+    } catch (err) {
+      console.error("Notification error:", err);
+    }
+  };
+
   return (
     <div className="admin-shell">
       {/* Sidebar */}
@@ -89,28 +117,51 @@ export default function AdminLayout({ children }) {
       <main className="admin-content">
         {/* Topbar */}
         <div className="admin-topbar">
-          <div className="admin-search">
-            <Search size={18} color="#6b7280" />
-            <input placeholder="Search restaurants or users..." />
-          </div>
-
           <div className="admin-top-actions">
-            <button className="admin-icon-btn" title="Notifications">
+            {/* Notifications */}
+            <button
+              className="admin-icon-btn"
+              title="Notifications"
+              style={{ position: "relative" }}
+              onClick={() => window.location.href = "/admin/restaurants"}
+            >
               <Bell size={18} />
+
+              {/* Small badge */}
+              {notifications > 0 && (
+                <span
+                  style={{
+                    position: "absolute",
+                    top: -4,
+                    right: -4,
+                    background: "#ef4444",
+                    color: "white",
+                    fontSize: "10px",
+                    borderRadius: "50%",
+                    padding: "2px 6px",
+                    fontWeight: "bold"
+                  }}
+                >
+                  {notifications}
+                </span>
+              )}
             </button>
 
+            {/* Open user side */}
             <button
               className="primary-button"
               style={{ height: 40, padding: "0 16px" }}
+              onClick={() => window.open("http://localhost:3000", "_blank")}
             >
-              View Site
+              User View
             </button>
 
+            {/* Role badge */}
             <div className="admin-pill">Admin</div>
           </div>
         </div>
 
-        {children}
+         {children}
       </main>
     </div>
   );
