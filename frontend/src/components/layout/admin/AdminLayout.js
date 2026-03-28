@@ -158,6 +158,11 @@ export default function AdminLayout({ children }) {
 
             {/* Role badge */}
             <div className="admin-pill">Admin</div>
+            <div style={{ fontSize: "14px", color: "#6b7280" }}>
+             <div style={{ fontSize: "14px", color: "#6b7280" }}>
+             📅 {new Date().toLocaleDateString()}
+              </div>
+            </div>
           </div>
         </div>
 

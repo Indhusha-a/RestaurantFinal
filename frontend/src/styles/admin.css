@@ -134,7 +134,8 @@
 .admin-top-actions {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 50px;
+  width: 200%;
 }
 
 .admin-icon-btn {
