@@ -131,6 +131,20 @@ export default function RestaurantApproval() {
       alert(error.message);
     }
   };
+    const formatBudget = (budgetRange) => {
+  switch (budgetRange) {
+    case "ZERO_TO_1000":
+      return "LKR 0 - 1000";
+    case "ONE_TO_2000":
+      return "LKR 1000 - 2000";
+    case "TWO_TO_5000":
+      return "LKR 2000 - 5000";
+    case "FIVE_THOUSAND_PLUS":
+      return "LKR 5000+";
+    default:
+      return budgetRange || "N/A";
+  }
+};
 
   return (
     <AdminLayout>
@@ -240,12 +254,21 @@ export default function RestaurantApproval() {
                 <p>{selected.phone || "N/A"}</p>
 
                 <p><b>Budget:</b></p>
-                <p>{selected.budgetRange || "N/A"}</p>
+                <p>{formatBudget(selected.budgetRange)}</p>
 
                 <p><b>Location:</b></p>
-                <a href={selected.locationLink} target="_blank" rel="noreferrer" className="text-blue-600 underline">
-                  View Map
-                </a>
+                     {selected.locationLink && selected.locationLink.startsWith("http") ? (
+                  <a
+                    href={selected.locationLink}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-blue-600 underline"
+                  >
+                    View Map
+                  </a>
+                 ) : (
+                   <span className="text-gray-500">No valid map link</span>
+                 )}
 
                 <p className="col-span-2 mt-2">
                   <b>Address:</b> {selected.address || "N/A"}
