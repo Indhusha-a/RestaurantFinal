@@ -1,183 +1,160 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import AdminLayout from "../../components/layout/admin/AdminLayout";
-import { Trash2, CheckCircle, XCircle, Users } from "lucide-react";
-import { users as initialUsers } from "../../data/dummyData";
+import { Users, Trash2 } from "lucide-react";
 
 export default function UserManagement() {
-  const [users, setUsers] = useState(initialUsers);
 
-  const acceptDeleteRequest = (id) => {
-    setUsers((prevUsers) =>
-      prevUsers.map((user) =>
-        user.id === id ? { ...user, deleteRequest: "Accepted" } : user
-      )
-    );
+  // store users
+  const [users, setUsers] = useState([]);
+
+  // store deletion requests
+  const [requests, setRequests] = useState([]);
+
+  // load data on page load
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  const fetchData = async () => {
+    try {
+      const usersRes = await fetch("http://localhost:8080/api/admin/users");
+      const reqRes = await fetch("http://localhost:8080/api/admin/users/deletion-requests");
+
+      const usersData = await usersRes.json();
+      const reqData = await reqRes.json();
+
+      setUsers(usersData);
+      setRequests(reqData);
+
+    } catch (err) {
+      console.error("Error:", err);
+    }
   };
 
-  const rejectDeleteRequest = (id) => {
-    setUsers((prevUsers) =>
-      prevUsers.map((user) =>
-        user.id === id ? { ...user, deleteRequest: "Rejected" } : user
-      )
-    );
-  };
+  // approve delete
+  const handleDelete = async (id) => {
+    if (!window.confirm("Delete this user permanently?")) return;
 
-  const statusClass = (status) => {
-    if (status === "Active") {
-      return "bg-emerald-50 text-emerald-700 border-emerald-100";
-    }
-    return "bg-red-50 text-red-700 border-red-100";
-  };
+    try {
+      await fetch(`http://localhost:8080/api/admin/users/${id}`, {
+        method: "DELETE",
+      });
 
-  const requestClass = (request) => {
-    if (request === "Pending") {
-      return "bg-amber-50 text-amber-700 border-amber-100";
+      // remove from UI
+      setUsers(users.filter(u => u.userId !== id));
+      setRequests(requests.filter(u => u.userId !== id));
+
+    } catch (err) {
+      console.error(err);
     }
-    if (request === "Accepted") {
-      return "bg-emerald-50 text-emerald-700 border-emerald-100";
-    }
-    if (request === "Rejected") {
-      return "bg-red-50 text-red-700 border-red-100";
-    }
-    return "bg-gray-50 text-gray-700 border-gray-100";
   };
 
   return (
-    <AdminLayout>
-      <section className="bg-white border border-gray-100 shadow-sm rounded-2xl p-6">
-        <div className="flex items-center justify-between gap-3 flex-wrap">
-          <div>
-            <h1 className="text-2xl md:text-3xl font-extrabold text-gray-900">
-              User{" "}
-              <span className="bg-gradient-to-r from-orange-500 to-pink-500 bg-clip-text text-transparent">
-                Management
-              </span>
-            </h1>
-            <p className="text-sm text-gray-500 mt-2">
-              View all registered users and manage profile deletion requests.
-            </p>
-          </div>
+  <AdminLayout>
 
-          <div className="w-12 h-12 rounded-2xl bg-gray-900 text-white flex items-center justify-center">
-            <Users size={20} />
-          </div>
-        </div>
-      </section>
+    {/* HEADER */}
+    <section className="bg-white border border-gray-100 shadow-sm rounded-2xl p-6 flex justify-between items-center">
+      <div>
+        <h1 className="text-3xl font-extrabold text-gray-900">
+          User{" "}
+          <span className="bg-gradient-to-r from-orange-500 to-pink-500 bg-clip-text text-transparent">
+            Management
+          </span>
+        </h1>
+        <p className="text-sm text-gray-500 mt-2">
+          Manage users and account deletion requests
+        </p>
+      </div>
 
-      <section className="bg-white border border-gray-100 shadow-sm rounded-2xl p-6 mt-5">
-        <div className="flex items-center justify-between gap-3 flex-wrap">
-          <div>
-            <h2 className="text-xl font-bold text-gray-900">All Users</h2>
-            <p className="text-sm text-gray-500 mt-1">
-              User accounts and deletion request statuses
-            </p>
-          </div>
+      <div className="w-12 h-12 bg-gray-900 text-white rounded-xl flex items-center justify-center shadow">
+        <Users size={20} />
+      </div>
+    </section>
 
-          <div className="px-4 py-2 rounded-full bg-gray-50 border border-gray-200 text-sm font-semibold text-gray-700">
-            Total: {users.length}
-          </div>
-        </div>
+    {/* ACTIVE USERS */}
+    <section className="bg-white border border-gray-100 shadow-sm rounded-2xl p-6 mt-6">
+      <div className="flex justify-between items-center mb-4">
+        <h2 className="text-xl font-bold text-gray-900">Active Users</h2>
+        <span className="text-sm text-gray-500">
+          {users.length} users
+        </span>
+      </div>
 
-        <div className="mt-5 overflow-x-auto">
-          <table className="min-w-full text-sm">
-            <thead>
-              <tr className="text-left text-gray-500 border-b border-gray-100">
-                <th className="py-3 pr-4 font-semibold">No</th>
-                <th className="py-3 pr-4 font-semibold">Name</th>
-                <th className="py-3 pr-4 font-semibold">Email</th>
-                <th className="py-3 pr-4 font-semibold">Phone</th>
-                <th className="py-3 pr-4 font-semibold">Account Status</th>
-                <th className="py-3 pr-4 font-semibold">Delete Request</th>
-                <th className="py-3 pr-4 font-semibold">Actions</th>
+      {users.length === 0 ? (
+        <p className="text-gray-400 text-sm">No users found</p>
+      ) : (
+        <table className="min-w-full text-sm">
+          <thead>
+            <tr className="border-b text-gray-400 text-left">
+              <th className="py-3 px-4">No</th>
+              <th className="py-3 px-4">Username</th>
+            </tr>
+          </thead>
+
+          <tbody>
+            {users.map((u, i) => (
+              <tr key={u.userId} className="border-b hover:bg-gray-50 transition">
+                <td className="py-4 px-4 font-medium">{i + 1}</td>
+                <td className="py-4 px-4 font-semibold text-gray-800">
+                  {u.username}
+                </td>
               </tr>
-            </thead>
+            ))}
+          </tbody>
+        </table>
+      )}
+    </section>
 
-            <tbody className="divide-y divide-gray-100">
-              {users.map((user, index) => (
-                <tr key={user.id} className="hover:bg-gray-50 transition">
-                  <td className="py-4 pr-4 font-semibold text-gray-900">
-                    {index + 1}
-                  </td>
+    {/* DELETION REQUESTS */}
+    <section className="bg-white border border-gray-100 shadow-sm rounded-2xl p-6 mt-6">
+      <div className="flex justify-between items-center mb-4">
+        <h2 className="text-xl font-bold text-gray-900">
+          Deletion Requests
+        </h2>
+        <span className="text-sm text-red-500">
+          {requests.length} pending
+        </span>
+      </div>
 
-                  <td className="py-4 pr-4 text-gray-800 font-semibold">
-                    {user.name}
-                  </td>
+      {requests.length === 0 ? (
+        <p className="text-gray-400 text-sm">
+          No deletion requests right now
+        </p>
+      ) : (
+        <table className="min-w-full text-sm">
+          <thead>
+            <tr className="border-b text-gray-400 text-left">
+              <th className="py-3 px-4">No</th>
+              <th className="py-3 px-4">Username</th>
+              <th className="py-3 px-4 text-center">Action</th>
+            </tr>
+          </thead>
 
-                  <td className="py-4 pr-4 text-gray-700">{user.email}</td>
+          <tbody>
+            {requests.map((u, i) => (
+              <tr key={u.userId} className="border-b hover:bg-gray-50 transition">
+                <td className="py-4 px-4 font-medium">{i + 1}</td>
 
-                  <td className="py-4 pr-4 text-gray-700">{user.phone}</td>
+                <td className="py-4 px-4 font-semibold text-gray-800">
+                  {u.username}
+                </td>
 
-                  <td className="py-4 pr-4">
-                    <span
-                      className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold border ${statusClass(
-                        user.status
-                      )}`}
-                    >
-                      {user.status}
-                    </span>
-                  </td>
+                <td className="py-4 px-4 text-center">
+                  <button
+                    onClick={() => handleDelete(u.userId)}
+                    className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg text-xs font-semibold transition shadow-sm"
+                  >
+                    <Trash2 size={14} className="inline mr-1" />
+                    Accept
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+    </section>
 
-                  <td className="py-4 pr-4">
-                    <span
-                      className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold border ${requestClass(
-                        user.deleteRequest
-                      )}`}
-                    >
-                      {user.deleteRequest}
-                    </span>
-                  </td>
-
-                  <td className="py-4 pr-4">
-                    {user.deleteRequest === "Pending" ? (
-                      <div className="flex items-center gap-2">
-                        <button
-                          onClick={() => acceptDeleteRequest(user.id)}
-                          className="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-emerald-600 text-white text-xs font-semibold hover:bg-emerald-700 transition"
-                          title="Accept deletion request"
-                        >
-                          <CheckCircle size={14} />
-                          Accept
-                        </button>
-
-                        <button
-                          onClick={() => rejectDeleteRequest(user.id)}
-                          className="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-red-600 text-white text-xs font-semibold hover:bg-red-700 transition"
-                          title="Reject deletion request"
-                        >
-                          <XCircle size={14} />
-                          Reject
-                        </button>
-                      </div>
-                    ) : (
-                      <span className="text-sm text-gray-400">
-                        No pending action
-                      </span>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </section>
-
-      <section className="bg-white border border-gray-100 shadow-sm rounded-2xl p-6 mt-5">
-        <div className="flex items-start gap-3">
-          <div className="w-10 h-10 rounded-xl bg-red-50 text-red-600 flex items-center justify-center">
-            <Trash2 size={18} />
-          </div>
-
-          <div>
-            <h3 className="text-lg font-bold text-gray-900">
-              Profile Deletion Policy
-            </h3>
-            <p className="text-sm text-gray-500 mt-2">
-              Admin can only accept or reject user profile deletion requests.
-              Passwords are not shown and cannot be changed from this page.
-            </p>
-          </div>
-        </div>
-      </section>
-    </AdminLayout>
-  );
+  </AdminLayout>
+);
 }
