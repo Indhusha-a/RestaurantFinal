@@ -48,6 +48,12 @@ public class Restaurant {
     private Integer points = 0;
     private Boolean boostRequested = false;
 
+    // 🔹 Current status of restaurant (PENDING / APPROVED / REJECTED)
+    private String status = "PENDING";
+
+    // 🔹 If rejected, admin reason will be stored here
+    private String rejectionReason;
+
     private LocalDateTime approvedAt;
 
 
@@ -68,4 +74,5 @@ public class Restaurant {
             inverseJoinColumns = @JoinColumn(name = "speciality_id")
     )
     private Set<Speciality> specialities;
+
 }
