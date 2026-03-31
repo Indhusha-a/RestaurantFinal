@@ -1,7 +1,17 @@
 package com.restaurant.demo.Service;
 
-import com.restaurant.demo.Entity.*;
-import com.restaurant.demo.Repository.*;
+import com.restaurant.demo.Entity.Notification;
+import com.restaurant.demo.Entity.Rating;
+import com.restaurant.demo.Entity.Restaurant;
+import com.restaurant.demo.Entity.Speciality;
+import com.restaurant.demo.Entity.Tag;
+import com.restaurant.demo.Entity.User;
+import com.restaurant.demo.Entity.Visits;
+import com.restaurant.demo.Repository.NotificationRepository;
+import com.restaurant.demo.Repository.RatingRepository;
+import com.restaurant.demo.Repository.RestaurantRepository;
+import com.restaurant.demo.Repository.UserRepository;
+import com.restaurant.demo.Repository.VisitsRepository;
 import com.restaurant.demo.enums.BudgetRange;
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
@@ -23,6 +33,10 @@ public class RestaurantService {
     private final NotificationRepository notificationRepository;
     private final TagService tagService;
     private final SpecialityService specialityService;
+
+    public Restaurant registerRestaurant(Restaurant restaurant) {
+        return restaurantRepository.save(restaurant);
+    }
 
     @PostConstruct
     public void seedApprovedDemoRestaurant() {
@@ -164,13 +178,13 @@ public class RestaurantService {
         }
     }
 
+    public List<Restaurant> getAllRestaurants() {
+        return restaurantRepository.findByIsApprovedTrueAndIsActiveTrue();
+    }
+
     public Restaurant getRestaurantById(Long id) {
         return restaurantRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Restaurant not found"));
-    }
-
-    public List<Restaurant> getAllRestaurants() {
-        return restaurantRepository.findByIsApprovedTrueAndIsActiveTrue();
     }
 
     public Map<String, Object> getRestaurantProfile(Long restaurantId) {
@@ -315,6 +329,13 @@ public class RestaurantService {
         return result;
     }
 
+    public List<Map<String, Object>> getTopRestaurantsOfTheWeek() {
+        return restaurantRepository.findTop10ByIsApprovedTrueAndIsActiveTrueOrderByPointsDescIdAsc()
+                .stream()
+                .map(this::buildRestaurantCardWithPoints)
+                .collect(Collectors.toList());
+    }
+
     public List<Map<String, Object>> filterRestaurants(String craving, String budgetStr, List<Long> tagIds) {
         BudgetRange budgetRange = mapBudgetString(budgetStr);
 
@@ -436,20 +457,20 @@ public class RestaurantService {
         return cuisineMap.getOrDefault(craving.toLowerCase(), Collections.emptyList());
     }
 
-    private Map<String, Object> buildRestaurantCard(Restaurant r) {
+    private Map<String, Object> buildRestaurantCard(Restaurant restaurant) {
         Map<String, Object> card = new LinkedHashMap<>();
-        card.put("restaurantId", r.getId());
-        card.put("id", r.getId());
-        card.put("name", r.getName());
-        card.put("description", r.getDescription());
-        card.put("phone", r.getPhone());
-        card.put("address", r.getAddress());
-        card.put("locationLink", r.getLocationLink());
-        card.put("budgetRange", mapBudgetToString(r.getBudgetRange()));
-        card.put("image1Path", r.getImage1Path());
-        card.put("image2Path", r.getImage2Path());
+        card.put("restaurantId", restaurant.getId());
+        card.put("id", restaurant.getId());
+        card.put("name", restaurant.getName());
+        card.put("description", restaurant.getDescription());
+        card.put("phone", restaurant.getPhone());
+        card.put("address", restaurant.getAddress());
+        card.put("locationLink", restaurant.getLocationLink());
+        card.put("budgetRange", mapBudgetToString(restaurant.getBudgetRange()));
+        card.put("image1Path", restaurant.getImage1Path());
+        card.put("image2Path", restaurant.getImage2Path());
 
-        List<Rating> ratings = ratingRepository.findByRestaurantId(r.getId());
+        List<Rating> ratings = ratingRepository.findByRestaurantId(restaurant.getId());
         if (!ratings.isEmpty()) {
             double avg = ratings.stream().mapToInt(Rating::getRatingValue).average().orElse(0);
             card.put("averageRating", Math.round(avg * 10.0) / 10.0);
@@ -459,13 +480,19 @@ public class RestaurantService {
             card.put("totalRatings", 0);
         }
 
-        card.put("tags", r.getTags() != null
-                ? r.getTags().stream().map(Tag::getTagName).collect(Collectors.toList())
+        card.put("tags", restaurant.getTags() != null
+                ? restaurant.getTags().stream().map(Tag::getTagName).collect(Collectors.toList())
                 : Collections.emptyList());
-        card.put("specialties", r.getSpecialities() != null
-                ? r.getSpecialities().stream().map(Speciality::getName).collect(Collectors.toList())
+        card.put("specialties", restaurant.getSpecialities() != null
+                ? restaurant.getSpecialities().stream().map(Speciality::getName).collect(Collectors.toList())
                 : Collections.emptyList());
 
+        return card;
+    }
+
+    private Map<String, Object> buildRestaurantCardWithPoints(Restaurant restaurant) {
+        Map<String, Object> card = buildRestaurantCard(restaurant);
+        card.put("points", restaurant.getPoints() != null ? restaurant.getPoints() : 0);
         return card;
     }
 

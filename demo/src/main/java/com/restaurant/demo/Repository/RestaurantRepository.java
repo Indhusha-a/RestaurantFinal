@@ -39,4 +39,7 @@ public interface RestaurantRepository extends JpaRepository<Restaurant, Long> {
 
     // Recently approved restaurants for Explore Mode (Member 2 can use this)
     List<Restaurant> findByIsApprovedTrueOrderByApprovedAtDesc();
+
+    // Weekly top restaurants ranked by points
+    List<Restaurant> findTop10ByIsApprovedTrueAndIsActiveTrueOrderByPointsDescIdAsc();
 }

@@ -2,7 +2,7 @@ import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import Index from "./pages/Index";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
-import Dashboard from "./pages/Index";
+import Dashboard from "./pages/Dashboard";
 import IndividualMode from "./pages/IndividualMode";
 import ExploreMode from "./pages/ExploreMode";
 import GroupMode from "./pages/GroupMode";

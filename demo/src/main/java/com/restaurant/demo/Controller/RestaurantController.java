@@ -1,6 +1,8 @@
 package com.restaurant.demo.Controller;
 
 import com.restaurant.demo.Entity.Restaurant;
+import com.restaurant.demo.Entity.Speciality;
+import com.restaurant.demo.Entity.Tag;
 import com.restaurant.demo.Service.RestaurantService;
 import com.restaurant.demo.Service.SpecialityService;
 import com.restaurant.demo.Service.TagService;
@@ -33,6 +35,11 @@ public class RestaurantController {
     private final SpecialityService specialityService;
     private final TagService tagService;
     private final UserService userService;
+
+    @PostMapping
+    public Restaurant register(@RequestBody Restaurant restaurant) {
+        return restaurantService.registerRestaurant(restaurant);
+    }
 
     @PostMapping(value = "/register", consumes = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<?> registerRestaurant(@RequestBody Map<String, Object> data) {
@@ -78,9 +85,18 @@ public class RestaurantController {
         } catch (RuntimeException e) {
             return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
         } catch (Exception e) {
-            e.printStackTrace();
             return ResponseEntity.status(500).body(Map.of("message", "Restaurant registration failed"));
         }
+    }
+
+    @GetMapping
+    public List<Restaurant> getAll() {
+        return restaurantService.getAllRestaurants();
+    }
+
+    @GetMapping("/{id}")
+    public Restaurant getById(@PathVariable Long id) {
+        return restaurantService.getRestaurantById(id);
     }
 
     @PostMapping("/login")
@@ -168,9 +184,23 @@ public class RestaurantController {
         }
     }
 
+    @GetMapping("/top-weekly")
+    public ResponseEntity<?> getTopRestaurantsOfTheWeek() {
+        try {
+            return ResponseEntity.ok(restaurantService.getTopRestaurantsOfTheWeek());
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
+        }
+    }
+
+    @GetMapping("/tags")
+    public List<Tag> getAllTags() {
+        return tagService.getAllTags();
+    }
+
     @GetMapping("/specialties")
-    public ResponseEntity<?> getMainSpecialties() {
-        return ResponseEntity.ok(specialityService.getMainSpecialities());
+    public List<Speciality> getAllSpecialties() {
+        return specialityService.getAllSpecialities();
     }
 
     @GetMapping("/desserts")
@@ -178,24 +208,37 @@ public class RestaurantController {
         return ResponseEntity.ok(specialityService.getDessertSpecialities());
     }
 
-    @GetMapping("/tags")
-    public ResponseEntity<?> getTags() {
-        return ResponseEntity.ok(tagService.getAllTags());
-    }
-
     @GetMapping("/")
-    public ResponseEntity<?> getAllRestaurants() {
+    public ResponseEntity<?> getAllRestaurantsCompat() {
         return ResponseEntity.ok(restaurantService.getAllRestaurants());
     }
 
     @PostMapping("/filter")
     public ResponseEntity<?> filterRestaurants(@RequestBody Map<String, Object> data) {
-        String craving = (String) data.get("craving");
-        String budgetRange = (String) data.get("budgetRange");
-        List<Long> tagIds = data.get("tagIds") == null ? null : ((List<?>) data.get("tagIds")).stream()
-                .map(value -> Long.parseLong(String.valueOf(value)))
-                .toList();
-        return ResponseEntity.ok(restaurantService.filterRestaurants(craving, budgetRange, tagIds));
+        try {
+            String craving = (String) data.get("craving");
+            String budgetRange = (String) data.get("budgetRange");
+            List<Long> tagIds = data.get("tagIds") == null ? null : ((List<?>) data.get("tagIds")).stream()
+                    .map(value -> Long.parseLong(String.valueOf(value)))
+                    .toList();
+            return ResponseEntity.ok(restaurantService.filterRestaurants(craving, budgetRange, tagIds));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
+        }
+    }
+
+    @PostMapping("/select")
+    public ResponseEntity<?> selectRestaurantLegacy(
+            @RequestHeader("Authorization") String authHeader,
+            @RequestBody Map<String, Object> data
+    ) {
+        try {
+            Long userId = userService.extractUserId(authHeader);
+            Long restaurantId = Long.valueOf(String.valueOf(data.get("restaurantId")));
+            return ResponseEntity.ok(restaurantService.selectRestaurant(userId, restaurantId));
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
+        }
     }
 
     @PostMapping("/{restaurantId}/select")
@@ -206,6 +249,21 @@ public class RestaurantController {
         try {
             Long userId = userService.extractUserId(authHeader);
             return ResponseEntity.ok(restaurantService.selectRestaurant(userId, restaurantId));
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
+        }
+    }
+
+    @PostMapping("/rate")
+    public ResponseEntity<?> rateRestaurantLegacy(
+            @RequestHeader("Authorization") String authHeader,
+            @RequestBody Map<String, Object> data
+    ) {
+        try {
+            Long userId = userService.extractUserId(authHeader);
+            Long restaurantId = Long.valueOf(String.valueOf(data.get("restaurantId")));
+            Integer ratingValue = Integer.valueOf(String.valueOf(data.get("ratingValue")));
+            return ResponseEntity.ok(restaurantService.rateVisit(userId, restaurantId, ratingValue));
         } catch (RuntimeException e) {
             return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
         }
@@ -251,7 +309,7 @@ public class RestaurantController {
         String[] parts = base64Data.split(",", 2);
         String metadata = parts[0];
         String encoded = parts.length > 1 ? parts[1] : parts[0];
-        String extension = resolveExtension(metadata, originalName, prefix);
+        String extension = resolveExtension(metadata, originalName);
         String fileName = System.currentTimeMillis() + "_" + prefix + extension;
 
         Path uploadPath = Paths.get(uploadDir).toAbsolutePath().normalize();
@@ -271,7 +329,7 @@ public class RestaurantController {
         return storeBase64File(base64Data, originalName, prefix);
     }
 
-    private String resolveExtension(String metadata, String originalName, String prefix) {
+    private String resolveExtension(String metadata, String originalName) {
         if (originalName != null && originalName.contains(".")) {
             return originalName.substring(originalName.lastIndexOf('.'));
         }
