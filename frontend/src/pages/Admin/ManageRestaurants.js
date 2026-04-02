@@ -2,12 +2,13 @@ import { useEffect, useState } from "react";
 import AdminLayout from "../../components/layout/admin/AdminLayout";
 import { Eye, Store } from "lucide-react";
 
-export default function ManageRestaurants() {
+export default function ManageRestaurants({ search = "" }) {
   const [restaurants, setRestaurants] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [selected, setSelected] = useState(null);
 
+  // Load restaurants once
   useEffect(() => {
     fetchRestaurants();
   }, []);
@@ -33,7 +34,12 @@ export default function ManageRestaurants() {
     }
   };
 
-  // Shows active / inactive badge color
+  // Filter by restaurant name using search input
+  const filteredRestaurants = restaurants.filter((restaurant) =>
+    restaurant.name?.toLowerCase().includes(search.toLowerCase())
+  );
+
+  // Active badge color
   const activeClass = (active) => {
     if (active === "Active") {
       return "bg-blue-50 text-blue-700 border-blue-100";
@@ -41,7 +47,7 @@ export default function ManageRestaurants() {
     return "bg-red-50 text-red-700 border-red-100";
   };
 
-  // Shows workflow status badge color
+  // Status badge color
   const workflowStatusClass = (status) => {
     if (status === "APPROVED") {
       return "bg-emerald-50 text-emerald-700 border-emerald-100";
@@ -55,7 +61,7 @@ export default function ManageRestaurants() {
     return "bg-gray-50 text-gray-700 border-gray-100";
   };
 
-  // Makes budget enum look nicer in UI
+  // Budget text for UI
   const formatBudget = (budgetRange) => {
     switch (budgetRange) {
       case "ZERO_TO_1000":
@@ -71,14 +77,14 @@ export default function ManageRestaurants() {
     }
   };
 
-  // Changes boolean into readable text
+  // Active / inactive text
   const formatActiveStatus = (isActive) => {
     return isActive ? "Active" : "Inactive";
   };
 
   return (
     <AdminLayout>
-      {/* HEADER */}
+      {/* Header */}
       <section className="bg-white border border-gray-100 shadow-sm rounded-2xl p-6">
         <div className="flex items-center justify-between gap-3 flex-wrap">
           <div>
@@ -99,7 +105,7 @@ export default function ManageRestaurants() {
         </div>
       </section>
 
-      {/* TABLE SECTION */}
+      {/* Table section */}
       <section className="bg-white border border-gray-100 shadow-sm rounded-2xl p-6 mt-5">
         <div className="flex items-center justify-between gap-3 flex-wrap">
           <div>
@@ -110,7 +116,7 @@ export default function ManageRestaurants() {
           </div>
 
           <div className="px-4 py-2 rounded-full bg-gray-50 border border-gray-200 text-sm font-semibold text-gray-700">
-            Total: {restaurants.length}
+            Total: {filteredRestaurants.length}
           </div>
         </div>
 
@@ -139,8 +145,8 @@ export default function ManageRestaurants() {
               </thead>
 
               <tbody className="divide-y divide-gray-100">
-                {restaurants.length > 0 ? (
-                  restaurants.map((restaurant, index) => {
+                {filteredRestaurants.length > 0 ? (
+                  filteredRestaurants.map((restaurant, index) => {
                     const activeStatus = formatActiveStatus(restaurant.isActive);
 
                     return (
@@ -210,7 +216,9 @@ export default function ManageRestaurants() {
                 ) : (
                   <tr>
                     <td colSpan="8" className="py-6 text-center text-gray-500">
-                      No restaurants found
+                      {search
+                        ? "No restaurants match your search."
+                        : "No restaurants found"}
                     </td>
                   </tr>
                 )}
@@ -220,7 +228,7 @@ export default function ManageRestaurants() {
         )}
       </section>
 
-      {/* VIEW MODAL */}
+      {/* View modal */}
       {selected && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
           <div className="bg-white rounded-2xl w-[550px] max-w-[95%] overflow-hidden shadow-lg">
