@@ -159,23 +159,15 @@ export const userAPI = {
 };
 
 export const restaurantAPI = {
-
-  // getTags: async () => {
-  //   try {
-  //     const response = await api.get('/restaurants/tags');
-  //     return response.data?.data || response.data;
-  //   } catch (error) {
-  //     throw error.response?.data || { message: 'Failed to fetch tags' };
-  //   }
-  // },
-
-
   getTags: async () => {
     try {
       const response = await api.get('/tags');
       return response.data?.data || response.data;
+    } catch (error) {
+      throw error.response?.data || { message: 'Failed to fetch tags' };
     }
   },
+
   getAllRestaurants: async () => {
     try {
       const response = await api.get('/restaurants');
@@ -191,16 +183,6 @@ export const restaurantAPI = {
       return response.data;
     } catch (error) {
       throw error.response?.data || { message: 'Failed to fetch top weekly restaurants' };
-    }
-  },
-
-  getTags: async () => {
-    try {
-      const response = await api.get('/restaurants/tags');
-      return response.data;
-
-    } catch (error) {
-      throw error.response?.data || { message: 'Failed to fetch tags' };
     }
   },
 
@@ -278,106 +260,6 @@ export const exploreAPI = {
     }
   }
 };
-
-// export const groupAPI = {
-//   createGroup: async (groupData) => {
-//     try {
-//       const response = await api.post('/groups', groupData);
-//       return response.data;
-//     } catch (error) {
-//       throw error.response?.data || { message: 'Failed to create group' };
-//     }
-//   },
-
-//   getMyGroups: async () => {
-//     try {
-//       const response = await api.get('/groups/my');
-//       return response.data;
-//     } catch (error) {
-//       throw error.response?.data || { message: 'Failed to fetch groups' };
-//     }
-//   },
-
-//   searchUsers: async (query) => {
-//     try {
-//       const response = await api.get(`/users/search?q=${query}`);
-//       return response.data;
-//     } catch (error) {
-//       throw error.response?.data || { message: 'Failed to search users' };
-//     }
-//   },
-
-//   sendInvitation: async (groupId, userId) => {
-//     try {
-//       const response = await api.post(`/groups/${groupId}/invite`, { userId });
-//       return response.data;
-//     } catch (error) {
-//       throw error.response?.data || { message: 'Failed to send invitation' };
-//     }
-//   },
-
-//   respondToInvitation: async (groupId, status) => {
-//     try {
-//       const response = await api.post(`/groups/${groupId}/respond`, { status });
-//       return response.data;
-//     } catch (error) {
-//       throw error.response?.data || { message: 'Failed to respond to invitation' };
-//     }
-//   },
-
-//   startSession: async (groupId, sessionName) => {
-//     try {
-//       const response = await api.post(`/groups/${groupId}/sessions`, { sessionName });
-//       return response.data;
-//     } catch (error) {
-//       throw error.response?.data || { message: 'Failed to start session' };
-//     }
-//   },
-
-//   submitPreferences: async (sessionId, preferences) => {
-//     try {
-//       const response = await api.post(`/sessions/${sessionId}/preferences`, preferences);
-//       return response.data;
-//     } catch (error) {
-//       throw error.response?.data || { message: 'Failed to submit preferences' };
-//     }
-//   },
-
-//   calculateTopsis: async (sessionId, preferences, restaurants) => {
-//     try {
-//       const response = await topsisApi.post('/topsis/calculate', {
-//         session_id: sessionId,
-//         preferences,
-//         restaurants
-//       });
-//       return response.data;
-//     } catch (error) {
-//       throw error.response?.data || { message: 'TOPSIS calculation failed' };
-//     }
-//   },
-
-//   vote: async (sessionId, restaurantId, voteType) => {
-//     try {
-//       const response = await api.post(`/sessions/${sessionId}/vote`, {
-//         restaurantId,
-//         vote: voteType
-//       });
-//       return response.data;
-//     } catch (error) {
-//       throw error.response?.data || { message: 'Failed to submit vote' };
-//     }
-//   },
-
-//   getSessionResults: async (sessionId) => {
-//     try {
-//       const response = await api.get(`/sessions/${sessionId}/results`);
-//       return response.data;
-//     } catch (error) {
-//       throw error.response?.data || { message: 'Failed to fetch session results' };
-//     }
-//   }
-// };
-
 
 export const groupAPI = {
   createGroup: async (groupName, createdByUserId) => {
@@ -494,9 +376,7 @@ export const groupAPI = {
     }
   },
 
-
-
-    searchUsersForInvite: async (groupId, username, currentUserId) => {
+  searchUsersForInvite: async (groupId, username, currentUserId) => {
     try {
       const response = await api.get('/groups/search-users', {
         params: { groupId, username, currentUserId }
@@ -507,8 +387,7 @@ export const groupAPI = {
     }
   },
 
-
-    generateTopsisRecommendations: async (sessionId) => {
+  generateTopsisRecommendations: async (sessionId) => {
     try {
       const response = await api.get(`/groups/session/${sessionId}/topsis`);
       return response.data;
@@ -516,22 +395,6 @@ export const groupAPI = {
       throw error.response?.data || { message: 'Failed to generate TOPSIS recommendations' };
     }
   },
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 };
 
 export const leaderboardAPI = {
@@ -582,10 +445,10 @@ export const adminAPI = {
     }
   }
 };
+
 export const cfAPI = {
   getRecommendations: async () => {
     try {
-      // Get user from localStorage
       const storedUser = localStorage.getItem("user");
 
       if (!storedUser) {
@@ -600,7 +463,6 @@ export const cfAPI = {
 
       const userId = user.userId;
 
-      //  Call backend API
       const response = await api.get(`/recommendations/${userId}`);
 
       return response.data;
