@@ -7,18 +7,14 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.util.List;
+import java.util.Optional;
 
 public interface RestaurantRepository extends JpaRepository<Restaurant, Long> {
 
-    List<Restaurant> findAllByOrderByIdDesc();
-    // ==================== ADMIN ====================
-    List<Restaurant> findByIsApprovedFalseOrderByIdDesc();
+    Optional<Restaurant> findByEmail(String email);
 
-    List<Restaurant> findByIsApprovedTrueOrderByIdDesc();
+    boolean existsByEmail(String email);
 
-    long countByIsApprovedFalse();
-
-    long countByIsApprovedTrue();
     // ==================== INDIVIDUAL MODE QUERIES ====================
 
     // Only approved and active restaurants are visible to users

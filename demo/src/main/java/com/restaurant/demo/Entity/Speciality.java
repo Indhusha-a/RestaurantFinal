@@ -35,6 +35,7 @@ public class Speciality {
     private String name;
 
     private String description;
+    private String category;
 
     @ManyToMany(mappedBy = "specialities")
     @JsonIgnore

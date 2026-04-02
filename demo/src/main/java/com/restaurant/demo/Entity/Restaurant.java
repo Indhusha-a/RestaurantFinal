@@ -1,5 +1,7 @@
 package com.restaurant.demo.Entity;
 
+
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.restaurant.demo.enums.BudgetRange;
 import jakarta.persistence.*;
 import lombok.*;
@@ -27,10 +29,19 @@ public class Restaurant {
     @Column(columnDefinition = "TEXT")
     private String description;
 
+    @Column(nullable = false, unique = true)
+    private String email;
+
+    @Column(nullable = false)
+    private String password;
+
     private String phone;
 
     @Column(columnDefinition = "TEXT")
     private String address;
+
+    @Column(name = "image_url")
+private String imageUrl;
 
     private String locationLink;
 
@@ -44,18 +55,14 @@ public class Restaurant {
 
     private Boolean isApproved = false;
     private Boolean isActive = true;
+    private Boolean isRejected = false;
+    private String approvalStatus = "PENDING";
+    private String rejectionReason;
 
     private Integer points = 0;
     private Boolean boostRequested = false;
 
-    // 🔹 Current status of restaurant (PENDING / APPROVED / REJECTED)
-    private String status = "PENDING";
-
-    // 🔹 If rejected, admin reason will be stored here
-    private String rejectionReason;
-
     private LocalDateTime approvedAt;
-
 
    //Relationships
 
@@ -65,7 +72,8 @@ public class Restaurant {
             joinColumns = @JoinColumn(name = "restaurant_id"),
             inverseJoinColumns = @JoinColumn(name = "tag_id")
     )
-    private Set<Tag> tags;
+    @JsonIgnore
+private Set<Tag> tags;
 
     @ManyToMany
     @JoinTable(
@@ -73,6 +81,6 @@ public class Restaurant {
             joinColumns = @JoinColumn(name = "restaurant_id"),
             inverseJoinColumns = @JoinColumn(name = "speciality_id")
     )
-    private Set<Speciality> specialities;
-
+    @JsonIgnore
+private Set<Speciality> specialities;
 }

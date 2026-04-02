@@ -7,6 +7,12 @@ import IndividualMode from "./pages/IndividualMode";
 import ExploreMode from "./pages/ExploreMode";
 import GroupMode from "./pages/GroupMode";
 import Profile from "./pages/Profile";
+
+import RestaurantRegister from "./pages/RestaurantRegister";
+import RestaurantLogin from "./pages/RestaurantLogin";
+import RestaurantPortal from "./pages/RestaurantPortal";
+import RestaurantList from "./pages/RestaurantList";
+
 import AdminDashboard from "./pages/Admin/AdminDashboard";
 import ManageRestaurants from "./pages/Admin/ManageRestaurants";
 import RestaurantApproval from "./pages/Admin/RestaurantApproval";
@@ -27,14 +33,25 @@ function App() {
         <Route path="/dashboard/group" element={<GroupMode />} />
         <Route path="/profile" element={<Profile />} />
 
-        {/* admin routes */}
+        {/* Admin routes */}
         <Route path="/admin" element={<AdminDashboard />} />
-        <Route path="/admin/manage-restaurants" element={<ManageRestaurants />} />
+        <Route
+          path="/admin/manage-restaurants"
+          element={<ManageRestaurants />}
+        />
         <Route path="/admin/add-restaurant" element={<AddRestaurant />} />
         <Route path="/admin/users" element={<UserManagement />} />
         <Route path="/admin/restaurants" element={<RestaurantApproval />} />
         <Route path="/admin-login" element={<AdminLogin />} />
-        <Route  /> 
+
+        {/* Restaurant routes */}
+        <Route
+          path="/restaurant-register"
+          element={<RestaurantRegister />}
+        />
+        <Route path="/restaurant-login" element={<RestaurantLogin />} />
+        <Route path="/restaurant-dashboard" element={<RestaurantPortal />} />
+        <Route path="/restaurants" element={<RestaurantList />} />
       </Routes>
     </Router>
   );
