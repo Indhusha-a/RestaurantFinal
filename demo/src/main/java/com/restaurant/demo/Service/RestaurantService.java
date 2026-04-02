@@ -35,6 +35,7 @@ public class RestaurantService {
     private final SpecialityService specialityService;
 
     public Restaurant registerRestaurant(Restaurant restaurant) {
+
         return restaurantRepository.save(restaurant);
     }
 
