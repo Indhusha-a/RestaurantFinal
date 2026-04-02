@@ -32,6 +32,9 @@ public class Visits {
 
     private Integer ratingGiven; // nullable, 1-5 rating after visit
 
+    @Builder.Default
+    private Boolean confirmedByRestaurant = false;
+
     @PrePersist
     protected void onCreate() {
         this.visitDate = LocalDateTime.now();
