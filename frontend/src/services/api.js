@@ -178,70 +178,118 @@ export const restaurantAPI = {
       const response = await api.post("/restaurants/login", data);
       return response.data;
     } catch (error) {
-      throw new Error(error.response?.data?.message || error.message || "Restaurant login failed");
+      throw new Error(
+        error.response?.data?.message || error.message || "Restaurant login failed"
+      );
     }
   },
 
   getProfile: async () => {
     try {
-      const response = await api.get("/restaurants/profile", { headers: getRestaurantAuthHeaders() });
+      const response = await api.get("/restaurants/profile", {
+        headers: getRestaurantAuthHeaders(),
+      });
       return response.data;
     } catch (error) {
-      throw new Error(error.response?.data?.message || error.message || "Failed to fetch restaurant profile");
+      throw new Error(
+        error.response?.data?.message ||
+          error.message ||
+          "Failed to fetch restaurant profile"
+      );
     }
   },
 
   updateProfile: async (data) => {
     try {
-      const response = await api.put("/restaurants/profile", data, { headers: getRestaurantAuthHeaders() });
+      const response = await api.put("/restaurants/profile", data, {
+        headers: getRestaurantAuthHeaders(),
+      });
       return response.data;
     } catch (error) {
-      throw new Error(error.response?.data?.message || error.message || "Failed to update restaurant profile");
+      throw new Error(
+        error.response?.data?.message ||
+          error.message ||
+          "Failed to update restaurant profile"
+      );
     }
   },
 
   getNotifications: async () => {
     try {
-      const response = await api.get("/restaurants/notifications", { headers: getRestaurantAuthHeaders() });
+      const response = await api.get("/restaurants/notifications", {
+        headers: getRestaurantAuthHeaders(),
+      });
       return response.data;
     } catch (error) {
-      throw new Error(error.response?.data?.message || error.message || "Failed to fetch notifications");
+      throw new Error(
+        error.response?.data?.message ||
+          error.message ||
+          "Failed to fetch notifications"
+      );
     }
   },
 
   getActivities: async () => {
     try {
-      const response = await api.get("/restaurants/activities", { headers: getRestaurantAuthHeaders() });
+      const response = await api.get("/restaurants/activities", {
+        headers: getRestaurantAuthHeaders(),
+      });
       return response.data;
     } catch (error) {
-      throw new Error(error.response?.data?.message || error.message || "Failed to fetch activities");
+      throw new Error(
+        error.response?.data?.message ||
+          error.message ||
+          "Failed to fetch activities"
+      );
     }
   },
 
   confirmVisit: async (visitId) => {
     try {
-      const response = await api.post(`/restaurants/activities/${visitId}/confirm`, {}, { headers: getRestaurantAuthHeaders() });
+      const response = await api.post(
+        `/restaurants/activities/${visitId}/confirm`,
+        {},
+        { headers: getRestaurantAuthHeaders() }
+      );
       return response.data;
     } catch (error) {
-      throw new Error(error.response?.data?.message || error.message || "Failed to confirm visit");
+      throw new Error(
+        error.response?.data?.message ||
+          error.message ||
+          "Failed to confirm visit"
+      );
     }
   },
 
   requestBoost: async () => {
     try {
-      const response = await api.post("/restaurants/boost/request", {}, { headers: getRestaurantAuthHeaders() });
+      const response = await api.post(
+        "/restaurants/boost/request",
+        {},
+        { headers: getRestaurantAuthHeaders() }
+      );
       return response.data;
     } catch (error) {
-      throw new Error(error.response?.data?.message || error.message || "Failed to request boost");
+      throw new Error(
+        error.response?.data?.message ||
+          error.message ||
+          "Failed to request boost"
+      );
     }
   },
 
   getPerformance: async () => {
     try {
-      const response = await api.get("/restaurants/performance", { headers: getRestaurantAuthHeaders() });
+      const response = await api.get("/restaurants/performance", {
+        headers: getRestaurantAuthHeaders(),
+      });
       return response.data;
     } catch (error) {
-      throw new Error(error.response?.data?.message || error.message || "Failed to fetch performance");
+      throw new Error(
+        error.response?.data?.message ||
+          error.message ||
+          "Failed to fetch performance"
+      );
     }
   },
 
@@ -259,16 +307,25 @@ export const restaurantAPI = {
       const response = await api.get("/restaurants/top-weekly");
       return response.data;
     } catch (error) {
-      throw error.response?.data || { message: "Failed to fetch top weekly restaurants" };
+      throw error.response?.data || {
+        message: "Failed to fetch top weekly restaurants",
+      };
     }
   },
 
   getTags: async () => {
     try {
-      const response = await api.get("/restaurants/tags");
-      return response.data;
+      const response = await api.get("/tags");
+      return response.data?.data || response.data;
     } catch (error) {
-      throw error.response?.data || { message: "Failed to fetch tags" };
+      try {
+        const fallbackResponse = await api.get("/restaurants/tags");
+        return fallbackResponse.data?.data || fallbackResponse.data;
+      } catch (fallbackError) {
+        throw (
+          fallbackError.response?.data || { message: "Failed to fetch tags" }
+        );
+      }
     }
   },
 
@@ -304,7 +361,9 @@ export const restaurantAPI = {
       const response = await api.get(`/restaurants/${restaurantId}`);
       return response.data;
     } catch (error) {
-      throw error.response?.data || { message: "Failed to fetch restaurant details" };
+      throw error.response?.data || {
+        message: "Failed to fetch restaurant details",
+      };
     }
   },
 
@@ -319,7 +378,9 @@ export const restaurantAPI = {
 
   rateVisit: async (restaurantId, ratingValue) => {
     try {
-      const response = await api.post(`/restaurants/${restaurantId}/rate`, { ratingValue });
+      const response = await api.post(`/restaurants/${restaurantId}/rate`, {
+        ratingValue,
+      });
       return response.data;
     } catch (error) {
       throw error.response?.data || { message: "Failed to rate restaurant" };
@@ -366,88 +427,136 @@ export const exploreAPI = {
 };
 
 export const groupAPI = {
-  createGroup: async (groupData) => {
+  createGroup: async (groupNameOrData, createdByUserId) => {
     try {
-      const response = await api.post("/groups", groupData);
+      if (typeof groupNameOrData === "object" && groupNameOrData !== null) {
+        const response = await api.post("/groups", groupNameOrData);
+        return response.data;
+      }
+
+      const response = await api.post("/groups/create", {
+        groupName: groupNameOrData,
+        createdByUserId,
+      });
       return response.data;
     } catch (error) {
       throw error.response?.data || { message: "Failed to create group" };
     }
   },
 
-  getMyGroups: async () => {
+  getUserGroups: async (userId) => {
     try {
-      const response = await api.get("/groups/my");
+      const endpoint = userId ? `/groups/user/${userId}` : "/groups/my";
+      const response = await api.get(endpoint);
       return response.data;
     } catch (error) {
       throw error.response?.data || { message: "Failed to fetch groups" };
     }
   },
 
-  searchUsers: async (query) => {
+  inviteByUsername: async (groupId, invitedByUserId, invitedUsername) => {
     try {
-      const response = await api.get(`/users/search?q=${query}`);
-      return response.data;
-    } catch (error) {
-      throw error.response?.data || { message: "Failed to search users" };
-    }
-  },
-
-  sendInvitation: async (groupId, userId) => {
-    try {
-      const response = await api.post(`/groups/${groupId}/invite`, { userId });
+      const response = await api.post("/groups/invite-by-username", {
+        groupId,
+        invitedByUserId,
+        invitedUsername,
+      });
       return response.data;
     } catch (error) {
       throw error.response?.data || { message: "Failed to send invitation" };
     }
   },
 
-  respondToInvitation: async (groupId, status) => {
+  getInvitations: async (userId) => {
     try {
-      const response = await api.post(`/groups/${groupId}/respond`, { status });
+      const response = await api.get(`/groups/invitations/${userId}`);
       return response.data;
     } catch (error) {
-      throw error.response?.data || { message: "Failed to respond to invitation" };
+      throw error.response?.data || { message: "Failed to fetch invitations" };
     }
   },
 
-  startSession: async (groupId, sessionName) => {
+  respondToInvitation: async (invitationId, action) => {
     try {
-      const response = await api.post(`/groups/${groupId}/sessions`, { sessionName });
+      const response = await api.post("/groups/invitation/respond", {
+        invitationId,
+        action,
+      });
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || {
+        message: "Failed to respond to invitation",
+      };
+    }
+  },
+
+  getGroupMembers: async (groupId) => {
+    try {
+      const response = await api.get(`/groups/${groupId}/members`);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: "Failed to fetch group members" };
+    }
+  },
+
+  startSession: async (groupId, createdByUserId) => {
+    try {
+      const response = await api.post("/groups/session/start", {
+        groupId,
+        createdByUserId,
+      });
       return response.data;
     } catch (error) {
       throw error.response?.data || { message: "Failed to start session" };
     }
   },
 
-  submitPreferences: async (sessionId, preferences) => {
+  submitPreference: async (...args) => {
     try {
-      const response = await api.post(`/sessions/${sessionId}/preferences`, preferences);
+      if (
+        args.length === 1 &&
+        typeof args[0] === "object" &&
+        args[0] !== null &&
+        ("preferences" in args[0] || "restaurants" in args[0])
+      ) {
+        const { sessionId, preferences, restaurants } = args[0];
+        const response = await topsisApi.post("/topsis/calculate", {
+          session_id: sessionId,
+          preferences,
+          restaurants,
+        });
+        return response.data;
+      }
+
+      const [sessionId, userId, craving, budgetRange, tagIds] = args;
+      const response = await api.post("/groups/session/preference", {
+        sessionId,
+        userId,
+        craving,
+        budgetRange,
+        tagIds,
+      });
       return response.data;
     } catch (error) {
       throw error.response?.data || { message: "Failed to submit preferences" };
     }
   },
 
-  calculateTopsis: async (sessionId, preferences, restaurants) => {
+  submitVote: async (sessionId, userId, restaurantId, isLikedOrVote) => {
     try {
-      const response = await topsisApi.post("/topsis/calculate", {
-        session_id: sessionId,
-        preferences,
-        restaurants,
-      });
-      return response.data;
-    } catch (error) {
-      throw error.response?.data || { message: "TOPSIS calculation failed" };
-    }
-  },
-
-  vote: async (sessionId, restaurantId, voteType) => {
-    try {
-      const response = await api.post(`/sessions/${sessionId}/vote`, {
+      const payload = {
+        sessionId,
+        userId,
         restaurantId,
-        vote: voteType,
-      });
+      };
+
+      if (typeof isLikedOrVote === "boolean") {
+        payload.isLiked = isLikedOrVote;
+      } else {
+        payload.vote = isLikedOrVote;
+      }
+
+      const response = await api.post("/groups/session/vote", payload);
       return response.data;
     } catch (error) {
       throw error.response?.data || { message: "Failed to submit vote" };
@@ -456,10 +565,32 @@ export const groupAPI = {
 
   getSessionResults: async (sessionId) => {
     try {
-      const response = await api.get(`/sessions/${sessionId}/results`);
+      const response = await api.get(`/groups/session/${sessionId}/results`);
       return response.data;
     } catch (error) {
       throw error.response?.data || { message: "Failed to fetch session results" };
+    }
+  },
+
+  searchUsersForInvite: async (groupId, username, currentUserId) => {
+    try {
+      const response = await api.get("/groups/search-users", {
+        params: { groupId, username, currentUserId },
+      });
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: "Failed to search users" };
+    }
+  },
+
+  generateTopsisRecommendations: async (sessionId) => {
+    try {
+      const response = await api.get(`/groups/session/${sessionId}/topsis`);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || {
+        message: "Failed to generate TOPSIS recommendations",
+      };
     }
   },
 };
@@ -490,7 +621,9 @@ export const adminAPI = {
       const response = await api.get("/admin/restaurants/pending");
       return response.data;
     } catch (error) {
-      throw error.response?.data || { message: "Failed to fetch pending restaurants" };
+      throw error.response?.data || {
+        message: "Failed to fetch pending restaurants",
+      };
     }
   },
 
@@ -508,7 +641,9 @@ export const adminAPI = {
       const response = await api.get("/admin/deletion-requests");
       return response.data;
     } catch (error) {
-      throw error.response?.data || { message: "Failed to fetch deletion requests" };
+      throw error.response?.data || {
+        message: "Failed to fetch deletion requests",
+      };
     }
   },
 };
@@ -529,7 +664,9 @@ export const cfAPI = {
       const response = await api.get(`/recommendations/${user.userId}`);
       return response.data;
     } catch (error) {
-      throw error.response?.data || { message: "Failed to fetch CF recommendations" };
+      throw error.response?.data || {
+        message: "Failed to fetch CF recommendations",
+      };
     }
   },
 };
