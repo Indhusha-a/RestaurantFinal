@@ -53,13 +53,27 @@ private String imageUrl;
     private String image1Path;
     private String image2Path;
 
+    // Approval workflow flags for restaurant registration status
+    @Builder.Default
     private Boolean isApproved = false;
+
+    @Builder.Default
     private Boolean isActive = true;
+
+    @Builder.Default
     private Boolean isRejected = false;
+
+    // Tracks the registration approval state: PENDING, APPROVED, REJECTED
+    @Builder.Default
     private String approvalStatus = "PENDING";
+
     private String rejectionReason;
 
+    // Points earned when group users visit this restaurant (resets weekly)
+    @Builder.Default
     private Integer points = 0;
+
+    @Builder.Default
     private Boolean boostRequested = false;
 
     private LocalDateTime approvedAt;

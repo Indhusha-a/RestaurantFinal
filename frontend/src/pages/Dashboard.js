@@ -1,10 +1,10 @@
-import { useEffect, useState } from "react";
-import { motion } from "framer-motion";
+import { useEffect, useState, useRef } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate } from "react-router-dom";
-import { User, Compass, Users, Bell, LogOut, Sparkles, ArrowRight, ChefHat } from "lucide-react";
+import { User, Compass, Users, Bell, LogOut, Sparkles, ArrowRight, ChefHat, Star, X, Check } from "lucide-react";
 import { Link } from "react-router-dom";
 import FloatingIcons from "../components/ui/FloatingIcons";
-import { userAPI } from "../services/api";
+import { userAPI, restaurantAPI } from "../services/api";
 import axios from 'axios';
 
 const modes = [
@@ -40,22 +40,50 @@ const modes = [
   }
 ];
 
+// Renders filled or empty stars for a given rating value (1-5)
+function StarDisplay({ value }) {
+  return (
+    <div className="flex gap-0.5">
+      {[1, 2, 3, 4, 5].map(n => (
+        <Star
+          key={n}
+          className={`w-4 h-4 ${n <= value ? "fill-yellow-400 text-yellow-400" : "text-border"}`}
+        />
+      ))}
+    </div>
+  );
+}
+
 export default function Dashboard() {
-  const [notifications, setNotifications] = useState(0);
-  const [userName, setUserName] = useState("");
+  const [notifCount, setNotifCount]       = useState(0);
+  const [notifications, setNotifications] = useState([]);
+  const [showNotifPanel, setShowNotifPanel] = useState(false);
+  const [loadingNotifs, setLoadingNotifs]   = useState(false);
+
+  const [userName, setUserName]   = useState("");
   const [userAvatar, setUserAvatar] = useState("neutral");
-  const [isNewUser, setIsNewUser] = useState(false);
+  const [isNewUser, setIsNewUser]   = useState(false);
+
+  // Visit-rating modal state
+  const [showRatingModal, setShowRatingModal]   = useState(false);
+  const [ratingVisits, setRatingVisits]         = useState([]);
+  const [loadingVisits, setLoadingVisits]       = useState(false);
+  const [hoveredStar, setHoveredStar]           = useState({ visitId: null, star: 0 });
+  const [submittingRating, setSubmittingRating] = useState(null);
+  const [ratedSuccess, setRatedSuccess]         = useState({});
+
   const navigate = useNavigate();
+  const notifRef = useRef(null);
 
   useEffect(() => {
-    // 1. Check for Token (Real Auth Check)
+    // Guard: redirect to login when no token is present
     const token = localStorage.getItem("token");
     if (!token) {
       navigate("/login");
       return;
     }
 
-    // 2. Try to get user from LocalStorage
+    // Load user display name and avatar from local storage or fall back to API
     const storedUser = localStorage.getItem("user");
     if (storedUser) {
       try {
@@ -66,7 +94,6 @@ export default function Dashboard() {
         console.error("Error parsing user data", e);
       }
     } else {
-      // 3. Fallback: Fetch profile from API if local storage is empty
       userAPI.getProfile()
         .then(data => {
           setUserName(data.firstName || data.username || "Foodie");
@@ -74,8 +101,6 @@ export default function Dashboard() {
           localStorage.setItem("user", JSON.stringify(data));
         })
         .catch(err => {
-          console.error("Failed to fetch profile", err);
-          // Only redirect on 401, not 403 (403 might be CORS related)
           if (err.response?.status === 401) {
             localStorage.removeItem("token");
             localStorage.removeItem("user");
@@ -83,16 +108,16 @@ export default function Dashboard() {
           }
         });
     }
-    // Fetch real unread notification count
+
+    // Fetch unread notification count for the badge on the bell icon
     if (token && token !== 'undefined') {
       axios.get('http://localhost:8080/api/users/notifications/unread-count', {
         headers: { Authorization: `Bearer ${token}` }
       })
-        .then(res => setNotifications(res.data?.count || 0))
+        .then(res => setNotifCount(res.data?.count || 0))
         .catch(() => {});
     }
 
-    // Check if this is a first-time user (just registered)
     const newUserFlag = localStorage.getItem('isNewUser');
     if (newUserFlag === 'true') {
       setIsNewUser(true);
@@ -100,15 +125,83 @@ export default function Dashboard() {
     }
   }, [navigate]);
 
+  // Close notification panel when clicking outside of it
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (notifRef.current && !notifRef.current.contains(e.target)) {
+        setShowNotifPanel(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
   const handleLogout = () => {
     localStorage.removeItem("token");
     localStorage.removeItem("user");
-    navigate('/login'); // Redirect to login, not root
+    navigate('/login');
   };
 
   const handleModeSelect = (mode) => {
     navigate(mode.route);
   };
+
+  // Pulls full notification messages when the bell is clicked
+  const handleBellClick = async () => {
+    const next = !showNotifPanel;
+    setShowNotifPanel(next);
+    if (next && notifications.length === 0) {
+      setLoadingNotifs(true);
+      try {
+        const data = await userAPI.getNotifications();
+        setNotifications(Array.isArray(data) ? data : []);
+      } catch {
+        setNotifications([]);
+      } finally {
+        setLoadingNotifs(false);
+      }
+    }
+  };
+
+  // Opens rate-visits modal and loads individual-mode visits that have not been rated yet
+  const handleOpenRatingModal = async () => {
+    setShowRatingModal(true);
+    setLoadingVisits(true);
+    try {
+      const data = await userAPI.getVisitHistory();
+      // Only individual visits are eligible for rating (group visits do not get rated)
+      const individual = (Array.isArray(data) ? data : []).filter(v => v.mode === "INDIVIDUAL");
+      setRatingVisits(individual);
+    } catch {
+      setRatingVisits([]);
+    } finally {
+      setLoadingVisits(false);
+    }
+  };
+
+  // Submits a one-time rating that is saved in the ratings table and consumed by the CF engine
+  const handleSubmitRating = async (restaurantId, visitId, star) => {
+    setSubmittingRating(visitId);
+    try {
+      await restaurantAPI.rateVisit(restaurantId, star);
+      // Mark this visit locally so the star row switches to a read-only display
+      setRatingVisits(prev =>
+        prev.map(v => v.visitId === visitId ? { ...v, ratingGiven: star } : v)
+      );
+      setRatedSuccess(prev => ({ ...prev, [visitId]: true }));
+    } catch (err) {
+      console.error("Rating failed:", err);
+    } finally {
+      setSubmittingRating(null);
+    }
+  };
+
+  // Avatar emoji lookup matches the same mapping used across Dashboard and Profile
+  const avatarEmoji = userAvatar === 'chef' ? '🧑‍🍳'
+    : userAvatar === 'happy' ? '😊'
+    : userAvatar === 'cool'  ? '😎'
+    : userAvatar === 'foodie'? '🍔'
+    : '👤';
 
   return (
     <div className="min-h-screen bg-background relative overflow-x-hidden">
@@ -124,18 +217,89 @@ export default function Dashboard() {
           </Link>
 
           <div className="flex items-center gap-4">
+            {/* Rate My Visits button — opens the CF rating modal */}
             <motion.button
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
-              className="relative p-2 rounded-full hover:bg-muted transition-colors"
+              onClick={handleOpenRatingModal}
+              id="rate-visits-btn"
+              className="hidden sm:flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-orange-500/10 to-pink-500/10 border border-primary/20 hover:border-primary/50 transition-all text-sm font-medium"
             >
-              <Bell className="w-5 h-5" />
-              {notifications > 0 && (
-                <span className="absolute -top-1 -right-1 w-5 h-5 bg-primary text-primary-foreground text-xs rounded-full flex items-center justify-center">
-                  {notifications}
-                </span>
-              )}
+              <Star className="w-4 h-4 text-primary" />
+              Rate Visits
             </motion.button>
+
+            {/* Notification bell with unread badge and dropdown */}
+            <div className="relative" ref={notifRef}>
+              <motion.button
+                id="notif-bell-btn"
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={handleBellClick}
+                className="relative p-2 rounded-full hover:bg-muted transition-colors"
+              >
+                <Bell className="w-5 h-5" />
+                {notifCount > 0 && (
+                  <span className="absolute -top-1 -right-1 w-5 h-5 bg-primary text-primary-foreground text-xs rounded-full flex items-center justify-center">
+                    {notifCount}
+                  </span>
+                )}
+              </motion.button>
+
+              {/* Notification dropdown panel */}
+              <AnimatePresence>
+                {showNotifPanel && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -10, scale: 0.95 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: -10, scale: 0.95 }}
+                    transition={{ duration: 0.15 }}
+                    className="absolute right-0 mt-2 w-80 bg-card border border-border rounded-2xl shadow-float z-50 overflow-hidden"
+                  >
+                    <div className="px-4 py-3 border-b border-border flex items-center justify-between">
+                      <span className="font-semibold text-sm">Notifications</span>
+                      <motion.button
+                        whileTap={{ scale: 0.9 }}
+                        onClick={() => setShowNotifPanel(false)}
+                        className="p-1 rounded-full hover:bg-muted transition-colors"
+                      >
+                        <X className="w-4 h-4 text-muted-foreground" />
+                      </motion.button>
+                    </div>
+
+                    <div className="max-h-72 overflow-y-auto">
+                      {loadingNotifs ? (
+                        <div className="flex items-center justify-center py-8">
+                          <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                        </div>
+                      ) : notifications.length === 0 ? (
+                        <div className="py-8 text-center text-muted-foreground text-sm">
+                          <Bell className="w-8 h-8 mx-auto mb-2 opacity-30" />
+                          No notifications yet
+                        </div>
+                      ) : (
+                        notifications.map((notif, i) => (
+                          <motion.div
+                            key={notif.id || i}
+                            initial={{ opacity: 0, x: -10 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            transition={{ delay: i * 0.04 }}
+                            className="px-4 py-3 border-b border-border/50 last:border-0 hover:bg-muted/30 transition-colors"
+                          >
+                            <p className="text-sm leading-snug">{notif.message}</p>
+                            {notif.createdAt && (
+                              <p className="text-xs text-muted-foreground mt-1">
+                                {new Date(notif.createdAt).toLocaleString()}
+                              </p>
+                            )}
+                          </motion.div>
+                        ))
+                      )}
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
 
             <motion.button
               whileHover={{ scale: 1.05 }}
@@ -151,10 +315,7 @@ export default function Dashboard() {
                 whileHover={{ scale: 1.05 }}
                 className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center cursor-pointer text-lg"
               >
-                {userAvatar === 'chef' ? '🧑‍🍳' :
-                 userAvatar === 'happy' ? '😊' :
-                 userAvatar === 'cool' ? '😎' :
-                 userAvatar === 'foodie' ? '🍔' : '👤'}
+                {avatarEmoji}
               </motion.div>
             </Link>
           </div>
@@ -256,7 +417,7 @@ export default function Dashboard() {
           })}
         </div>
 
-        {/* Stats Section with Dummy Data (Connect to API later) */}
+        {/* Stats Section */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -277,6 +438,143 @@ export default function Dashboard() {
           </div>
         </motion.div>
       </main>
+
+      {/* ==================== RATING MODAL ==================== */}
+      {/* Shows individual-mode visits; unrated ones display a clickable star selector.
+          Each submitted rating is written to the ratings table and feeds the CF engine. */}
+      <AnimatePresence>
+        {showRatingModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
+            onClick={() => setShowRatingModal(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.9, y: 20 }}
+              className="bg-card rounded-3xl max-w-lg w-full max-h-[80vh] flex flex-col border-2 border-border/50 overflow-hidden"
+              onClick={e => e.stopPropagation()}
+            >
+              {/* Modal header */}
+              <div className="px-6 py-4 border-b border-border flex items-center justify-between flex-shrink-0">
+                <div>
+                  <h2 className="text-xl font-display font-bold">Rate Your Visits</h2>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Your ratings help us recommend better restaurants for you
+                  </p>
+                </div>
+                <motion.button
+                  whileTap={{ scale: 0.9 }}
+                  onClick={() => setShowRatingModal(false)}
+                  className="p-2 rounded-full hover:bg-muted transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </motion.button>
+              </div>
+
+              {/* Visit list */}
+              <div className="flex-1 overflow-y-auto">
+                {loadingVisits ? (
+                  <div className="flex items-center justify-center py-12">
+                    <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                  </div>
+                ) : ratingVisits.length === 0 ? (
+                  <div className="py-12 text-center text-muted-foreground">
+                    <Star className="w-12 h-12 mx-auto mb-3 opacity-20" />
+                    <p className="font-medium">No individual visits yet</p>
+                    <p className="text-sm mt-1">Use Individual Mode to visit restaurants first</p>
+                  </div>
+                ) : (
+                  <div className="divide-y divide-border/50">
+                    {ratingVisits.map(visit => {
+                      const alreadyRated = visit.ratingGiven != null;
+                      const justRated    = ratedSuccess[visit.visitId];
+                      const isSubmitting = submittingRating === visit.visitId;
+
+                      return (
+                        <motion.div
+                          key={visit.visitId}
+                          initial={{ opacity: 0, x: -10 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          className="px-6 py-4"
+                        >
+                          <div className="flex flex-col gap-2">
+                            {/* Restaurant name and visit date */}
+                            <div className="flex items-start justify-between">
+                              <div>
+                                <p className="font-semibold">{visit.restaurantName}</p>
+                                <p className="text-xs text-muted-foreground">
+                                  {visit.visitDate
+                                    ? new Date(visit.visitDate).toLocaleDateString("en-GB", {
+                                        day: "numeric", month: "short", year: "numeric"
+                                      })
+                                    : "Date unknown"}
+                                </p>
+                              </div>
+
+                              {/* Confirmation badge when rating was just submitted */}
+                              {justRated && (
+                                <span className="flex items-center gap-1 text-xs text-green-600 bg-green-50 border border-green-200 px-2 py-0.5 rounded-full">
+                                  <Check className="w-3 h-3" /> Submitted
+                                </span>
+                              )}
+                            </div>
+
+                            {/* Star selector (unrated) or read-only display (rated) */}
+                            {alreadyRated ? (
+                              <div className="flex items-center gap-2">
+                                <StarDisplay value={visit.ratingGiven} />
+                                <span className="text-xs text-muted-foreground">Your rating</span>
+                              </div>
+                            ) : isSubmitting ? (
+                              <div className="flex items-center gap-2">
+                                <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                                <span className="text-xs text-muted-foreground">Saving...</span>
+                              </div>
+                            ) : (
+                              <div className="flex gap-1">
+                                {[1, 2, 3, 4, 5].map(star => {
+                                  const isHovered = hoveredStar.visitId === visit.visitId && star <= hoveredStar.star;
+                                  return (
+                                    <motion.button
+                                      key={star}
+                                      id={`star-${visit.visitId}-${star}`}
+                                      whileHover={{ scale: 1.2 }}
+                                      whileTap={{ scale: 0.9 }}
+                                      onMouseEnter={() => setHoveredStar({ visitId: visit.visitId, star })}
+                                      onMouseLeave={() => setHoveredStar({ visitId: null, star: 0 })}
+                                      onClick={() => handleSubmitRating(visit.restaurantId, visit.visitId, star)}
+                                      className="focus:outline-none"
+                                    >
+                                      <Star
+                                        className={`w-6 h-6 transition-colors ${
+                                          isHovered
+                                            ? "fill-yellow-400 text-yellow-400"
+                                            : "text-border hover:text-yellow-300"
+                                        }`}
+                                      />
+                                    </motion.button>
+                                  );
+                                })}
+                                <span className="text-xs text-muted-foreground self-center ml-1">
+                                  Tap to rate
+                                </span>
+                              </div>
+                            )}
+                          </div>
+                        </motion.div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

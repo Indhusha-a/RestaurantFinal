@@ -74,6 +74,7 @@ public class AdminService {
     public Restaurant addRestaurant(AdminRestaurantRequest request) {
         String savedImagePath = saveImage(request.getImage());
 
+        // Build the restaurant entity — admin-added restaurants skip the approval step
         Restaurant restaurant = Restaurant.builder()
                 .name(request.getName())
                 .description(request.getDescription())
@@ -82,12 +83,13 @@ public class AdminService {
                 .locationLink(request.getLocationLink())
                 .budgetRange(request.getBudgetRange())
                 .image1Path(savedImagePath)
-                .isApproved(true)
+                .isApproved(true)               // admin bypass: directly approved
                 .isActive(true)
+                .isRejected(false)
                 .points(0)
                 .boostRequested(false)
-                .status("APPROVED")              // admin-added restaurant goes directly live
-                .rejectionReason(null)           // no rejection reason because it is approved
+                .approvalStatus("APPROVED")      // approval workflow status field
+                .rejectionReason(null)           // no rejection reason since it is approved
                 .approvedAt(LocalDateTime.now())
                 .build();
 
@@ -98,18 +100,21 @@ public class AdminService {
     // RESTAURANT MANAGEMENT
     // =========================
 
-    // Returns all restaurants for manage-restaurants page
+    // Returns all restaurants for manage-restaurants page, newest first
     public List<Restaurant> getAllRestaurants() {
-        return restaurantRepository.findAllByOrderByIdDesc();
+        return restaurantRepository.findAll()
+                .stream()
+                .sorted(Comparator.comparing(Restaurant::getId).reversed())
+                .collect(java.util.stream.Collectors.toList());
     }
 
-    // Returns only restaurants waiting for admin action
+    // Returns only restaurants waiting for admin action (approvalStatus = PENDING)
     public List<Restaurant> getPendingRestaurants() {
         return restaurantRepository.findAll()
                 .stream()
-                .filter(restaurant -> "PENDING".equalsIgnoreCase(restaurant.getStatus()))
+                .filter(restaurant -> "PENDING".equalsIgnoreCase(restaurant.getApprovalStatus()))
                 .sorted(Comparator.comparing(Restaurant::getId).reversed())
-                .toList();
+                .collect(java.util.stream.Collectors.toList());
     }
 
     // Approves a pending restaurant
@@ -119,14 +124,15 @@ public class AdminService {
 
         // Mark this restaurant as approved
         restaurant.setIsApproved(true);
+        restaurant.setIsRejected(false);
 
-        // Update workflow status
-        restaurant.setStatus("APPROVED");
+        // Update the approval workflow status — this is what the system checks everywhere
+        restaurant.setApprovalStatus("APPROVED");
 
-        // Clear old rejection reason if there was one before
+        // Clear any old rejection reason from a previous rejection if present
         restaurant.setRejectionReason(null);
 
-        // Save the approval date
+        // Record when admin approved this registration
         restaurant.setApprovedAt(LocalDateTime.now());
 
         return restaurantRepository.save(restaurant);
@@ -138,28 +144,29 @@ public class AdminService {
         Restaurant restaurant = restaurantRepository.findById(restaurantId)
                 .orElseThrow(() -> new RuntimeException("Restaurant not found"));
 
-        // When rejected, it should not be treated as approved
+        // When rejected, flip both flags so the restaurant dashboard shows the correct state
         restaurant.setIsApproved(false);
+        restaurant.setIsRejected(true);
 
-        // Set status as rejected
-        restaurant.setStatus("REJECTED");
+        // Update the approval workflow status to REJECTED
+        restaurant.setApprovalStatus("REJECTED");
 
-        // Save the reason entered by admin
+        // Store the reason admin gave for rejecting this application
         restaurant.setRejectionReason(reason);
 
-        // Clear approval date because it was not approved
+        // Clear the approved date since it was never approved
         restaurant.setApprovedAt(null);
 
         return restaurantRepository.save(restaurant);
     }
 
-    // Optional helper if later you want a separate rejected-restaurants page
+    // Returns rejected restaurants — used if a separate rejected list is shown in admin UI
     public List<Restaurant> getRejectedRestaurants() {
         return restaurantRepository.findAll()
                 .stream()
-                .filter(restaurant -> "REJECTED".equalsIgnoreCase(restaurant.getStatus()))
+                .filter(restaurant -> "REJECTED".equalsIgnoreCase(restaurant.getApprovalStatus()))
                 .sorted(Comparator.comparing(Restaurant::getId).reversed())
-                .toList();
+                .collect(java.util.stream.Collectors.toList());
     }
 
     // =========================
@@ -203,7 +210,10 @@ public class AdminService {
         return result;
     }
 
-    // Permanently deletes a normal user after admin approval
+    // Soft-deletes a normal user after admin approval
+    // We do NOT hard-delete the user row because their visits and ratings are still
+    // linked to restaurant statistics. Setting isActive=false blocks future logins
+    // while keeping the historical data intact.
     public void approveUserDeletion(Long userId) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("User not found"));
@@ -212,7 +222,13 @@ public class AdminService {
             throw new RuntimeException("Only normal users can be deleted from this section");
         }
 
-        userRepository.delete(user);
+        // Deactivate the account so the login check rejects them with a clear message
+        user.setIsActive(false);
+
+        // Clear the deletion request flag since the action has been processed
+        user.setDeletionRequested(false);
+
+        userRepository.save(user);
     }
 
     // =========================
@@ -231,17 +247,17 @@ public class AdminService {
 
         long totalRestaurants = restaurantRepository.count();
 
-        // Using status here is more accurate than only using isApproved
+        // Count by approvalStatus field to get accurate breakdown for the admin dashboard cards
         long pendingRestaurants = restaurantRepository.findAll().stream()
-                .filter(restaurant -> "PENDING".equalsIgnoreCase(restaurant.getStatus()))
+                .filter(restaurant -> "PENDING".equalsIgnoreCase(restaurant.getApprovalStatus()))
                 .count();
 
         long approvedRestaurants = restaurantRepository.findAll().stream()
-                .filter(restaurant -> "APPROVED".equalsIgnoreCase(restaurant.getStatus()))
+                .filter(restaurant -> "APPROVED".equalsIgnoreCase(restaurant.getApprovalStatus()))
                 .count();
 
         long rejectedRestaurants = restaurantRepository.findAll().stream()
-                .filter(restaurant -> "REJECTED".equalsIgnoreCase(restaurant.getStatus()))
+                .filter(restaurant -> "REJECTED".equalsIgnoreCase(restaurant.getApprovalStatus()))
                 .count();
 
         Map<String, Object> stats = new LinkedHashMap<>();
