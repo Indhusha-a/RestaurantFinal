@@ -40,6 +40,7 @@ public class UserService {
 
     // ==================== AUTH ====================
 
+    // Handles new user registration with all required field validations
     public Map<String, Object> register(Map<String, String> data) {
         String username = data.get("username");
         String email = data.get("email");
@@ -50,32 +51,32 @@ public class UserService {
         String gender = data.get("gender");
         String avatarIcon = data.getOrDefault("avatarIcon", "neutral");
 
-        // Validate required fields
+        // Check that all required fields are provided before going further
         if (username == null || email == null || password == null || firstName == null || lastName == null) {
             throw new RuntimeException("All required fields must be provided");
         }
 
-        // Validate username uniqueness
+        // Usernames must be unique — one username per account in the system
         if (userRepository.existsByUsername(username)) {
             throw new RuntimeException("Username already taken");
         }
 
-        // Validate email uniqueness
+        // Email must not already be registered to another account
         if (userRepository.existsByEmail(email)) {
             throw new RuntimeException("Email already registered");
         }
 
-        // Validate email contains @
+        // The @ symbol validation for email format
         if (!email.contains("@")) {
             throw new RuntimeException("Email must contain @ symbol");
         }
 
-        // Validate phone number is exactly 10 digits
+        // Phone number must be exactly 10 digits (Sri Lankan format)
         if (phoneNumber != null && !phoneNumber.matches("\\d{10}")) {
             throw new RuntimeException("Phone number must be exactly 10 digits");
         }
 
-        // Validate password has capital letter and special character
+        // Password strength rules: must include at least one capital letter and one special character
         if (!password.matches(".*[A-Z].*")) {
             throw new RuntimeException("Password must contain at least one capital letter");
         }
@@ -83,7 +84,7 @@ public class UserService {
             throw new RuntimeException("Password must contain at least one special character");
         }
 
-        // Build and save user (password stored as plain text per requirement)
+        // Build and save user (password stored as plain text per project requirement)
         User user = User.builder()
                 .firstName(firstName)
                 .lastName(lastName)
@@ -97,7 +98,7 @@ public class UserService {
 
         User saved = userRepository.save(user);
 
-        // Generate simple token (base64 of userId for uni project)
+        // Token uses Base64 encoding of "user:{id}" for this university project
         String token = Base64.getEncoder().encodeToString(("user:" + saved.getUserId()).getBytes());
 
         Map<String, Object> response = new LinkedHashMap<>();
@@ -113,8 +114,9 @@ public class UserService {
         return response;
     }
 
+    // Handles login by accepting either username or email along with the password
     public Map<String, Object> login(String usernameOrEmail, String password) {
-        // Find user by username or email
+        // Find user by username or email — whichever the user provides
         Optional<User> optionalUser = userRepository.findByUsernameOrEmail(usernameOrEmail, usernameOrEmail);
 
         if (optionalUser.isEmpty()) {
@@ -123,17 +125,17 @@ public class UserService {
 
         User user = optionalUser.get();
 
-        // Check if user is active
+        // Accounts that are deactivated (soft-deleted by admin) are blocked here
         if (!user.getIsActive()) {
             throw new RuntimeException("Account is deactivated. Contact admin.");
         }
 
-        // Compare plain text password (no hashing per requirement)
+        // Password comparison — plain text per project requirement (no hashing)
         if (!user.getPassword().equals(password)) {
             throw new RuntimeException("Invalid password. Please try again.");
         }
 
-        // Generate token
+        // Token uses Base64 encoding of "user:{id}" for this university project
         String token = Base64.getEncoder().encodeToString(("user:" + user.getUserId()).getBytes());
 
         Map<String, Object> response = new LinkedHashMap<>();
@@ -299,6 +301,8 @@ public class UserService {
 
     // ==================== TOKEN HELPER ====================
 
+    // Decodes the Base64 token from the Authorization header to extract the user ID.
+    // Token format is "user:{userId}" encoded in Base64.
     public Long extractUserId(String authHeader) {
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
             throw new RuntimeException("Missing or invalid authorization token");

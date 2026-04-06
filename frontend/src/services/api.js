@@ -19,9 +19,14 @@ const topsisApi = axios.create({
 
 api.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem("token");
-    if (token && token !== "undefined" && token !== "null") {
-      config.headers.Authorization = `Bearer ${token}`;
+    // Only attach the user token if the request does not already carry
+    // its own Authorization header (e.g. restaurant-specific endpoints
+    // provide their own restaurantToken via getRestaurantAuthHeaders).
+    if (!config.headers["Authorization"]) {
+      const token = localStorage.getItem("token");
+      if (token && token !== "undefined" && token !== "null") {
+        config.headers.Authorization = `Bearer ${token}`;
+      }
     }
     return config;
   },
@@ -154,6 +159,15 @@ export const userAPI = {
       return response.data;
     } catch (error) {
       throw error.response?.data || { message: "Failed to fetch visit history" };
+    }
+  },
+
+  getNotifications: async () => {
+    try {
+      const response = await api.get("/users/notifications");
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: "Failed to fetch notifications" };
     }
   },
 };
@@ -655,7 +669,7 @@ export const adminAPI = {
 
   approveRestaurant: async (restaurantId) => {
     try {
-      const response = await api.post(`/admin/restaurants/${restaurantId}/approve`);
+      const response = await api.put(`/admin/restaurants/${restaurantId}/approve`);
       return response.data;
     } catch (error) {
       throw error.response?.data || { message: "Failed to approve restaurant" };

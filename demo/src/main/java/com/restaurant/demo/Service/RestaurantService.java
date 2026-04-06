@@ -16,6 +16,7 @@ import com.restaurant.demo.enums.BudgetRange;
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.time.format.TextStyle;
@@ -34,6 +35,7 @@ public class RestaurantService {
     private final TagService tagService;
     private final SpecialityService specialityService;
 
+    // Basic registration — used when the admin manually adds a restaurant without the approval flow
     public Restaurant registerRestaurant(Restaurant restaurant) {
 
         return restaurantRepository.save(restaurant);
@@ -80,24 +82,32 @@ public class RestaurantService {
         restaurantRepository.save(restaurant);
     }
 
+    // ==================== RESTAURANT REGISTRATION ====================
+
+    // Validates and creates a new restaurant application with PENDING status.
+    // Specialities and tags are resolved or created on-the-fly via their services.
     public Restaurant createRestaurantApplication(
             Restaurant restaurant,
             List<String> mainSpecialities,
             List<String> dessertSpecialities,
             List<String> tags
     ) {
+        // The @ symbol validation ensures the email is in a valid format
         if (restaurant.getEmail() == null || !restaurant.getEmail().contains("@")) {
             throw new RuntimeException("Email must contain @ symbol");
         }
         if (restaurantRepository.existsByEmail(restaurant.getEmail())) {
             throw new RuntimeException("A restaurant with this email already exists");
         }
+        // Password must contain at least one capital letter
         if (restaurant.getPassword() == null || !restaurant.getPassword().matches(".*[A-Z].*")) {
             throw new RuntimeException("Password must contain at least one capital letter");
         }
+        // Password must contain at least one special character
         if (restaurant.getPassword() == null || !restaurant.getPassword().matches(".*[!@#$%^&*()_+\\-=\\[\\]{};':\"\\\\|,.<>/?].*")) {
             throw new RuntimeException("Password must contain at least one special character");
         }
+        // Phone number must be exactly 10 digits
         if (restaurant.getPhone() == null || !restaurant.getPhone().matches("\\d{10}")) {
             throw new RuntimeException("Phone number must be exactly 10 digits");
         }
@@ -107,6 +117,7 @@ public class RestaurantService {
         if (dessertSpecialities != null && dessertSpecialities.size() > 5) {
             throw new RuntimeException("Select up to 5 dessert specialties");
         }
+        // Exactly 3 vibe tags must be selected to characterize the restaurant atmosphere
         if (tags == null || tags.size() != 3) {
             throw new RuntimeException("Exactly 3 vibe tags must be selected");
         }
@@ -135,19 +146,27 @@ public class RestaurantService {
         return restaurantRepository.save(restaurant);
     }
 
+    // ==================== RESTAURANT LOGIN ====================
+
+    // Authenticates a restaurant owner using their registration email and password.
+    // Rejected restaurants are removed from the system and asked to re-register.
+    // Pending restaurants can still log in and view their current approval status.
     public Map<String, Object> restaurantLogin(String email, String password) {
         Restaurant restaurant = restaurantRepository.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("Wrong restaurant credentials"));
 
+        // Plain text password comparison (matches the same pattern used for user auth)
         if (!Objects.equals(restaurant.getPassword(), password)) {
             throw new RuntimeException("Wrong restaurant credentials");
         }
 
+        // If the admin has rejected this restaurant, remove the record and ask them to apply again
         if (Boolean.TRUE.equals(restaurant.getIsRejected()) || "REJECTED".equalsIgnoreCase(restaurant.getApprovalStatus())) {
             restaurantRepository.delete(restaurant);
             throw new RuntimeException("Application rejected. Please register again.");
         }
 
+        // Token encodes "restaurant:{id}" so the backend knows this is a restaurant session
         String token = Base64.getEncoder().encodeToString(("restaurant:" + restaurant.getId()).getBytes());
         Map<String, Object> response = new LinkedHashMap<>();
         response.put("token", token);
@@ -166,6 +185,10 @@ public class RestaurantService {
         return response;
     }
 
+    // ==================== TOKEN HELPER ====================
+
+    // Decodes the restaurant-specific token from the Authorization header.
+    // Token format is "restaurant:{id}" encoded in Base64, different from the user token.
     public Long extractRestaurantId(String authHeader) {
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
             throw new RuntimeException("Missing or invalid authorization token");
@@ -179,6 +202,10 @@ public class RestaurantService {
         }
     }
 
+    // ==================== RESTAURANT LISTING ====================
+
+    // Only returns restaurants that are both approved and actively available to users
+    @Transactional(readOnly = true)
     public List<Restaurant> getAllRestaurants() {
         return restaurantRepository.findByIsApprovedTrueAndIsActiveTrue();
     }
@@ -337,6 +364,13 @@ public class RestaurantService {
                 .collect(Collectors.toList());
     }
 
+    // ==================== INDIVIDUAL MODE FILTERING ====================
+
+    // Filters approved restaurants by craving (speciality name), budget range, and vibe tags.
+    // If no exact match is found for the craving, a similar cuisine fallback is attempted.
+    // @Transactional(readOnly = true) keeps the Hibernate session open so that lazy-loaded
+    // tags and specialities on Restaurant are still reachable when buildRestaurantCard iterates them.
+    @Transactional(readOnly = true)
     public List<Map<String, Object>> filterRestaurants(String craving, String budgetStr, List<Long> tagIds) {
         BudgetRange budgetRange = mapBudgetString(budgetStr);
 
@@ -360,6 +394,7 @@ public class RestaurantService {
             }
         }
 
+        // Fall back to similar cuisines if no direct craving match is found
         if (candidates.isEmpty() && craving != null && !craving.trim().isEmpty()) {
             for (String similar : getSimilarCuisines(craving)) {
                 candidates = restaurantRepository.findBySpecialityName(similar);
@@ -372,6 +407,10 @@ public class RestaurantService {
         return candidates.stream().map(this::buildRestaurantCard).collect(Collectors.toList());
     }
 
+    // ==================== VISIT RECORDING ====================
+
+    // Records a user's decision to visit a restaurant (Individual Mode).
+    // Notifies the restaurant that a customer is on their way.
     public Map<String, Object> selectRestaurant(Long userId, Long restaurantId) {
         User user = userRepository.findById(userId).orElseThrow(() -> new RuntimeException("User not found"));
         Restaurant restaurant = restaurantRepository.findById(restaurantId).orElseThrow(() -> new RuntimeException("Restaurant not found"));
@@ -399,15 +438,24 @@ public class RestaurantService {
         );
     }
 
+    // Saves the user's rating for a restaurant (1 to 5 stars).
+    // Ratings are one-time and not editable — each user can rate a restaurant at most once.
+    // The saved row is consumed by the Collaborative Filtering engine in Explore Mode.
+    // Also stamps the visit record so the rating is visible in visit history.
     public Map<String, String> rateVisit(Long userId, Long restaurantId, Integer ratingValue) {
         if (ratingValue < 1 || ratingValue > 5) {
             throw new RuntimeException("Rating must be between 1 and 5");
         }
 
+        // Reject the request if this user has already rated this restaurant
+        if (ratingRepository.findByUserUserIdAndRestaurantId(userId, restaurantId).isPresent()) {
+            throw new RuntimeException("You have already rated this restaurant");
+        }
+
         User user = userRepository.findById(userId).orElseThrow(() -> new RuntimeException("User not found"));
         Restaurant restaurant = restaurantRepository.findById(restaurantId).orElseThrow(() -> new RuntimeException("Restaurant not found"));
 
-        Rating rating = ratingRepository.findByUserUserIdAndRestaurantId(userId, restaurantId).orElse(new Rating());
+        Rating rating = new Rating();
         rating.setUser(user);
         rating.setRestaurant(restaurant);
         rating.setRatingValue(ratingValue);

@@ -7,7 +7,8 @@ import {
   Users,
   PlusCircle,
   ClipboardCheck,
-  List
+  List,
+  LogOut
 } from "lucide-react";
 
 export default function AdminLayout({ children }) {
@@ -111,6 +112,24 @@ export default function AdminLayout({ children }) {
             User Management
           </NavLink>
         </nav>
+
+        {/* Admin logout — clears session and redirects to home */}
+        <div style={{ marginTop: "auto", padding: "16px" }}>
+          <button
+            className="admin-link"
+            style={{ width: "100%", background: "none", border: "none", cursor: "pointer", color: "#ef4444" }}
+            onClick={() => {
+              localStorage.removeItem("token");
+              localStorage.removeItem("user");
+              window.location.href = "/";
+            }}
+          >
+            <span className="admin-link-icon">
+              <LogOut size={18} />
+            </span>
+            Logout
+          </button>
+        </div>
       </aside>
 
       {/* Content */}
