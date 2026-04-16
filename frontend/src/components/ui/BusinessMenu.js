@@ -47,12 +47,13 @@ export default function BusinessMenu() {
           <button
             onClick={() => {
               setOpen(false);
-              alert("Admin login will be added next.");
+              navigate("/admin-login");
             }}
             className="block w-full text-left px-4 py-3 hover:bg-muted transition"
           >
             Admin Login
           </button>
+
         </motion.div>
       )}
     </div>

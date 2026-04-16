@@ -1,0 +1,328 @@
+/* ---------- Admin Premium Theme (Light + Brand Accent) ---------- */
+
+.admin-shell {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #fff7fb 0%, #fff1f6 35%, #fff 100%);
+  display: flex;
+}
+
+.admin-sidebar {
+  width: 270px;
+  padding: 26px 18px;
+  background: rgba(255, 255, 255, 0.82);
+  border-right: 1px solid rgba(0, 0, 0, 0.06);
+  backdrop-filter: blur(18px);
+  position: sticky;
+  top: 0;
+  height: 100vh;
+}
+
+.admin-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 10px 16px 10px;
+  margin-bottom: 10px;
+}
+
+.admin-brand-logo {
+  width: 38px;
+  height: 38px;
+  border-radius: 12px;
+  background: linear-gradient(90deg, #ff512f, #dd2476);
+  box-shadow: 0 10px 20px rgba(221, 36, 118, 0.18);
+}
+
+.admin-brand-title {
+  font-weight: 800;
+  font-size: 18px;
+  line-height: 1.1;
+}
+
+.admin-brand-sub {
+  font-size: 12px;
+  color: #6b7280;
+  margin-top: 2px;
+}
+
+.admin-section-title {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: #9aa0aa;
+  padding: 16px 10px 8px 10px;
+  text-transform: uppercase;
+}
+
+.admin-nav {
+  display: grid;
+  gap: 8px;
+  padding: 6px;
+}
+
+.admin-link {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 12px;
+  border-radius: 14px;
+  color: #111827;
+  text-decoration: none;
+  transition: all 0.22s ease;
+  border: 1px solid transparent;
+}
+
+.admin-link:hover {
+  transform: translateX(4px);
+  background: rgba(255, 81, 47, 0.08);
+  border-color: rgba(221, 36, 118, 0.18);
+}
+
+.admin-link.active {
+  background: linear-gradient(90deg, rgba(255, 81, 47, 0.14), rgba(221, 36, 118, 0.14));
+  border-color: rgba(221, 36, 118, 0.22);
+  box-shadow: 0 10px 18px rgba(221, 36, 118, 0.12);
+}
+
+.admin-link-icon {
+  width: 22px;
+  height: 22px;
+  display: grid;
+  place-items: center;
+  color: rgba(221, 36, 118, 0.95);
+}
+
+.admin-content {
+  flex: 1;
+  padding: 26px;
+}
+
+.admin-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 18px;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.78);
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  backdrop-filter: blur(18px);
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.06);
+  margin-bottom: 18px;
+}
+
+.admin-search {
+  flex: 1;
+  max-width: 520px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: #f7f7fb;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  padding: 10px 12px;
+  border-radius: 14px;
+}
+
+.admin-search input {
+  border: none;
+  outline: none;
+  width: 100%;
+  background: transparent;
+  font-size: 14px;
+}
+
+.admin-top-actions {
+  display: flex;
+  align-items: center;
+  gap: 50px;
+  width: 200%;
+}
+
+.admin-icon-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: 14px;
+  background: #fff;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  display: grid;
+  place-items: center;
+  transition: all 0.2s ease;
+}
+
+.admin-icon-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 14px 22px rgba(0, 0, 0, 0.08);
+}
+
+.admin-pill {
+  padding: 10px 14px;
+  border-radius: 999px;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  background: #fff;
+  font-size: 13px;
+  color: #111827;
+}
+
+.admin-grid {
+  display: grid;
+  grid-template-columns: 1.6fr 1fr;
+  gap: 18px;
+  margin-top: 18px;
+}
+
+.admin-kpi-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+  margin-top: 12px;
+}
+
+.admin-card {
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  border-radius: 20px;
+  padding: 18px;
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.06);
+}
+
+.admin-card.hover {
+  transition: all 0.22s ease;
+}
+.admin-card.hover:hover {
+  transform: translateY(-6px);
+  box-shadow: 0 24px 55px rgba(221, 36, 118, 0.12);
+}
+
+.admin-card-title {
+  font-weight: 800;
+  font-size: 16px;
+}
+
+.admin-muted {
+  color: #6b7280;
+  font-size: 13px;
+  margin-top: 4px;
+}
+
+.admin-kpi-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 14px;
+  background: linear-gradient(90deg, #ff512f, #dd2476);
+  display: grid;
+  place-items: center;
+  color: #fff;
+  box-shadow: 0 14px 26px rgba(221, 36, 118, 0.18);
+}
+
+.admin-kpi-value {
+  font-size: 26px;
+  font-weight: 900;
+  margin-top: 10px;
+}
+
+.admin-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0 10px;
+}
+
+.admin-table th {
+  text-align: left;
+  font-size: 12px;
+  color: #6b7280;
+  font-weight: 700;
+  padding: 0 12px 6px 12px;
+}
+
+.admin-row {
+  background: #fff;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  border-radius: 16px;
+}
+
+.admin-row td {
+  padding: 12px;
+  font-size: 14px;
+}
+
+.admin-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  border: 1px solid rgba(0,0,0,0.06);
+}
+
+.badge-pending { background: rgba(255, 81, 47, 0.08); color: #b42318; }
+.badge-approved { background: rgba(34, 197, 94, 0.12); color: #166534; }
+.badge-boost { background: rgba(221, 36, 118, 0.10); color: #9d174d; }
+
+@media (max-width: 1100px) {
+  .admin-kpi-row { grid-template-columns: repeat(2, 1fr); }
+  .admin-grid { grid-template-columns: 1fr; }
+  .admin-sidebar { position: relative; height: auto; }
+}
+/* --- Add Restaurant extras --- */
+.admin-input {
+  width: 100%;
+  padding: 12px 12px;
+  border-radius: 14px;
+  border: 1px solid rgba(0,0,0,0.08);
+  background: #fff;
+  outline: none;
+  font-size: 14px;
+}
+
+.admin-input:focus {
+  border-color: rgba(221, 36, 118, 0.35);
+  box-shadow: 0 0 0 4px rgba(221, 36, 118, 0.10);
+}
+
+.admin-label {
+  font-size: 13px;
+  font-weight: 700;
+  color: #111827;
+  margin-bottom: 8px;
+  display: block;
+}
+
+.admin-chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.admin-chip {
+  padding: 9px 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(0,0,0,0.08);
+  background: #fff;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.18s ease;
+}
+
+.admin-chip:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 20px rgba(0,0,0,0.08);
+}
+
+.admin-chip.active {
+  background: linear-gradient(90deg, rgba(255, 81, 47, 0.14), rgba(221, 36, 118, 0.14));
+  border-color: rgba(221, 36, 118, 0.22);
+}
+
+.admin-toast {
+  position: fixed;
+  right: 22px;
+  bottom: 22px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: #111827;
+  color: #fff;
+  box-shadow: 0 20px 40px rgba(0,0,0,0.22);
+  z-index: 2000;
+}

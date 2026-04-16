@@ -7,10 +7,20 @@ import IndividualMode from "./pages/IndividualMode";
 import ExploreMode from "./pages/ExploreMode";
 import GroupMode from "./pages/GroupMode";
 import Profile from "./pages/Profile";
+
 import RestaurantRegister from "./pages/RestaurantRegister";
 import RestaurantLogin from "./pages/RestaurantLogin";
 import RestaurantPortal from "./pages/RestaurantPortal";
 import RestaurantList from "./pages/RestaurantList";
+
+import GroupLeaderboard from "./pages/GroupLeaderboard";
+import AdminDashboard from "./pages/Admin/AdminDashboard";
+import ManageRestaurants from "./pages/Admin/ManageRestaurants";
+import RestaurantApproval from "./pages/Admin/RestaurantApproval";
+import UserManagement from "./pages/Admin/UserManagement";
+import AddRestaurant from "./pages/Admin/AddRestaurants";
+import AdminLogin from "./pages/Admin/AdminLogin";
+import SystemMonitoring from "./pages/Admin/SystemMonitoring";
 
 function App() {
   return (
@@ -23,8 +33,26 @@ function App() {
         <Route path="/dashboard/individual" element={<IndividualMode />} />
         <Route path="/dashboard/explore" element={<ExploreMode />} />
         <Route path="/dashboard/group" element={<GroupMode />} />
+        <Route path="/dashboard/leaderboard" element={<GroupLeaderboard />} />
         <Route path="/profile" element={<Profile />} />
-        <Route path="/restaurant-register" element={<RestaurantRegister />} />
+
+        {/* Admin routes */}
+        <Route path="/admin" element={<AdminDashboard />} />
+        <Route
+          path="/admin/manage-restaurants"
+          element={<ManageRestaurants />}
+        />
+        <Route path="/admin/add-restaurant" element={<AddRestaurant />} />
+        <Route path="/admin/users" element={<UserManagement />} />
+        <Route path="/admin/restaurants" element={<RestaurantApproval />} />
+        <Route path="/admin/monitoring" element={<SystemMonitoring />} />
+        <Route path="/admin-login" element={<AdminLogin />} />
+
+        {/* Restaurant routes */}
+        <Route
+          path="/restaurant-register"
+          element={<RestaurantRegister />}
+        />
         <Route path="/restaurant-login" element={<RestaurantLogin />} />
         <Route path="/restaurant-dashboard" element={<RestaurantPortal />} />
         <Route path="/restaurants" element={<RestaurantList />} />

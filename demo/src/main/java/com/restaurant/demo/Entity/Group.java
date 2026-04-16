@@ -59,7 +59,14 @@ public class Group {
     private User createdBy;
 
     @Builder.Default
+    @Column(nullable = false)
+    private Integer points = 0;
+
+    @Builder.Default
     private LocalDateTime createdAt = LocalDateTime.now();
+
+    @Builder.Default
+    private LocalDateTime pointsResetDate = LocalDateTime.now();
 
     @Builder.Default
     private Boolean isActive = true;

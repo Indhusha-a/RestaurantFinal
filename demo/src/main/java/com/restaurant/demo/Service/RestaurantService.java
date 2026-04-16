@@ -1,6 +1,7 @@
 package com.restaurant.demo.Service;
 
 import com.restaurant.demo.Entity.Notification;
+import com.restaurant.demo.Entity.GroupSession;
 import com.restaurant.demo.Entity.Rating;
 import com.restaurant.demo.Entity.Restaurant;
 import com.restaurant.demo.Entity.Speciality;
@@ -11,11 +12,13 @@ import com.restaurant.demo.Repository.NotificationRepository;
 import com.restaurant.demo.Repository.RatingRepository;
 import com.restaurant.demo.Repository.RestaurantRepository;
 import com.restaurant.demo.Repository.UserRepository;
+import com.restaurant.demo.Repository.GroupSessionRepository;
 import com.restaurant.demo.Repository.VisitsRepository;
 import com.restaurant.demo.enums.BudgetRange;
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.time.format.TextStyle;
@@ -31,10 +34,14 @@ public class RestaurantService {
     private final VisitsRepository visitsRepository;
     private final UserRepository userRepository;
     private final NotificationRepository notificationRepository;
+    private final NotificationService notificationService;
     private final TagService tagService;
     private final SpecialityService specialityService;
+    private final GroupSessionRepository groupSessionRepository;
 
+    // Basic registration — used when the admin manually adds a restaurant without the approval flow
     public Restaurant registerRestaurant(Restaurant restaurant) {
+
         return restaurantRepository.save(restaurant);
     }
 
@@ -79,24 +86,32 @@ public class RestaurantService {
         restaurantRepository.save(restaurant);
     }
 
+    // ==================== RESTAURANT REGISTRATION ====================
+
+    // Validates and creates a new restaurant application with PENDING status.
+    // Specialities and tags are resolved or created on-the-fly via their services.
     public Restaurant createRestaurantApplication(
             Restaurant restaurant,
             List<String> mainSpecialities,
             List<String> dessertSpecialities,
             List<String> tags
     ) {
+        // The @ symbol validation ensures the email is in a valid format
         if (restaurant.getEmail() == null || !restaurant.getEmail().contains("@")) {
             throw new RuntimeException("Email must contain @ symbol");
         }
         if (restaurantRepository.existsByEmail(restaurant.getEmail())) {
             throw new RuntimeException("A restaurant with this email already exists");
         }
+        // Password must contain at least one capital letter
         if (restaurant.getPassword() == null || !restaurant.getPassword().matches(".*[A-Z].*")) {
             throw new RuntimeException("Password must contain at least one capital letter");
         }
+        // Password must contain at least one special character
         if (restaurant.getPassword() == null || !restaurant.getPassword().matches(".*[!@#$%^&*()_+\\-=\\[\\]{};':\"\\\\|,.<>/?].*")) {
             throw new RuntimeException("Password must contain at least one special character");
         }
+        // Phone number must be exactly 10 digits
         if (restaurant.getPhone() == null || !restaurant.getPhone().matches("\\d{10}")) {
             throw new RuntimeException("Phone number must be exactly 10 digits");
         }
@@ -106,6 +121,7 @@ public class RestaurantService {
         if (dessertSpecialities != null && dessertSpecialities.size() > 5) {
             throw new RuntimeException("Select up to 5 dessert specialties");
         }
+        // Exactly 3 vibe tags must be selected to characterize the restaurant atmosphere
         if (tags == null || tags.size() != 3) {
             throw new RuntimeException("Exactly 3 vibe tags must be selected");
         }
@@ -134,19 +150,27 @@ public class RestaurantService {
         return restaurantRepository.save(restaurant);
     }
 
+    // ==================== RESTAURANT LOGIN ====================
+
+    // Authenticates a restaurant owner using their registration email and password.
+    // Rejected restaurants are removed from the system and asked to re-register.
+    // Pending restaurants can still log in and view their current approval status.
     public Map<String, Object> restaurantLogin(String email, String password) {
         Restaurant restaurant = restaurantRepository.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("Wrong restaurant credentials"));
 
+        // Plain text password comparison (matches the same pattern used for user auth)
         if (!Objects.equals(restaurant.getPassword(), password)) {
             throw new RuntimeException("Wrong restaurant credentials");
         }
 
+        // If the admin has rejected this restaurant, remove the record and ask them to apply again
         if (Boolean.TRUE.equals(restaurant.getIsRejected()) || "REJECTED".equalsIgnoreCase(restaurant.getApprovalStatus())) {
             restaurantRepository.delete(restaurant);
             throw new RuntimeException("Application rejected. Please register again.");
         }
 
+        // Token encodes "restaurant:{id}" so the backend knows this is a restaurant session
         String token = Base64.getEncoder().encodeToString(("restaurant:" + restaurant.getId()).getBytes());
         Map<String, Object> response = new LinkedHashMap<>();
         response.put("token", token);
@@ -165,6 +189,10 @@ public class RestaurantService {
         return response;
     }
 
+    // ==================== TOKEN HELPER ====================
+
+    // Decodes the restaurant-specific token from the Authorization header.
+    // Token format is "restaurant:{id}" encoded in Base64, different from the user token.
     public Long extractRestaurantId(String authHeader) {
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
             throw new RuntimeException("Missing or invalid authorization token");
@@ -178,6 +206,10 @@ public class RestaurantService {
         }
     }
 
+    // ==================== RESTAURANT LISTING ====================
+
+    // Only returns restaurants that are both approved and actively available to users
+    @Transactional(readOnly = true)
     public List<Restaurant> getAllRestaurants() {
         return restaurantRepository.findByIsApprovedTrueAndIsActiveTrue();
     }
@@ -239,16 +271,18 @@ public class RestaurantService {
     }
 
     public List<Notification> getRestaurantNotifications(Long restaurantId) {
-        return notificationRepository.findByUserIdOrderByCreatedAtDesc(restaurantId);
+        // Fetch only restaurant-targeted notifications for the dashboard
+        return notificationRepository.findByRecipientIdAndRecipientTypeOrderByCreatedAtDesc(
+                restaurantId, Notification.RecipientType.RESTAURANT);
     }
 
     public Map<String, Object> getRestaurantActivities(Long restaurantId) {
         List<Visits> individual = visitsRepository.findByRestaurantIdAndModeOrderByVisitDateDesc(restaurantId, "INDIVIDUAL");
-        List<Visits> group = visitsRepository.findByRestaurantIdAndModeOrderByVisitDateDesc(restaurantId, "GROUP");
+        List<GroupSession> groupSessions = groupSessionRepository.findByWinningRestaurantIdOrderByCreatedAtDesc(restaurantId);
 
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("individualRequests", individual.stream().map(this::mapVisit).collect(Collectors.toList()));
-        result.put("groupRequests", group.stream().map(this::mapVisit).collect(Collectors.toList()));
+        result.put("groupRequests", groupSessions.stream().map(this::mapGroupRequest).collect(Collectors.toList()));
         return result;
     }
 
@@ -263,11 +297,11 @@ public class RestaurantService {
         visit.setConfirmedByRestaurant(true);
         visitsRepository.save(visit);
 
-        notificationRepository.save(Notification.builder()
-                .userId(visit.getUser().getUserId())
-                .message("Your visit to " + visit.getRestaurant().getName() + " was confirmed by the restaurant.")
-                .type("VISIT_CONFIRMED")
-                .build());
+        notificationService.createUserNotification(
+                visit.getUser().getUserId(),
+                "Your visit to " + visit.getRestaurant().getName() + " was confirmed by the restaurant.",
+                "VISIT_CONFIRMED"
+        );
 
         return Map.of("message", "Visit confirmed successfully");
     }
@@ -285,6 +319,30 @@ public class RestaurantService {
                 "points", restaurant.getPoints(),
                 "boostRequested", true
         );
+    }
+
+    // Confirm group session visitation by restaurant owner (restaurant confirmation step)
+    public Map<String, Object> confirmGroupSession(Long restaurantId, Long sessionId) {
+        // Verify the session exists and matches this restaurant as winner
+        GroupSession session = groupSessionRepository.findById(sessionId)
+                .orElseThrow(() -> new RuntimeException("Session not found"));
+
+        if (session.getWinningRestaurant() == null || !session.getWinningRestaurant().getId().equals(restaurantId)) {
+            throw new RuntimeException("This session's winning restaurant does not match your restaurant");
+        }
+
+        session.setRestaurantConfirmed(true);
+        groupSessionRepository.save(session);
+
+        // Notify group leader to confirm the visitation on their end
+        Long groupLeaderId = session.getCreatedBy().getUserId();
+        notificationService.createUserNotification(
+                groupLeaderId,
+                "Restaurant " + session.getWinningRestaurant().getName() + " confirmed your group's visit. Please confirm on your end.",
+                "GROUP_VISIT_RESTAURANT_CONFIRMED"
+        );
+
+        return Map.of("message", "Group visit confirmation recorded. Group leader will now confirm.");
     }
 
     public Map<String, Object> getPerformance(Long restaurantId) {
@@ -336,6 +394,13 @@ public class RestaurantService {
                 .collect(Collectors.toList());
     }
 
+    // ==================== INDIVIDUAL MODE FILTERING ====================
+
+    // Filters approved restaurants by craving (speciality name), budget range, and vibe tags.
+    // If no exact match is found for the craving, a similar cuisine fallback is attempted.
+    // @Transactional(readOnly = true) keeps the Hibernate session open so that lazy-loaded
+    // tags and specialities on Restaurant are still reachable when buildRestaurantCard iterates them.
+    @Transactional(readOnly = true)
     public List<Map<String, Object>> filterRestaurants(String craving, String budgetStr, List<Long> tagIds) {
         BudgetRange budgetRange = mapBudgetString(budgetStr);
 
@@ -359,6 +424,7 @@ public class RestaurantService {
             }
         }
 
+        // Fall back to similar cuisines if no direct craving match is found
         if (candidates.isEmpty() && craving != null && !craving.trim().isEmpty()) {
             for (String similar : getSimilarCuisines(craving)) {
                 candidates = restaurantRepository.findBySpecialityName(similar);
@@ -371,6 +437,10 @@ public class RestaurantService {
         return candidates.stream().map(this::buildRestaurantCard).collect(Collectors.toList());
     }
 
+    // ==================== VISIT RECORDING ====================
+
+    // Records a user's decision to visit a restaurant (Individual Mode).
+    // Notifies the restaurant that a customer is on their way.
     public Map<String, Object> selectRestaurant(Long userId, Long restaurantId) {
         User user = userRepository.findById(userId).orElseThrow(() -> new RuntimeException("User not found"));
         Restaurant restaurant = restaurantRepository.findById(restaurantId).orElseThrow(() -> new RuntimeException("Restaurant not found"));
@@ -380,14 +450,15 @@ public class RestaurantService {
                 .restaurant(restaurant)
                 .mode("INDIVIDUAL")
                 .confirmedByRestaurant(false)
+                .visitDate(LocalDateTime.now())
                 .build();
         visitsRepository.save(visit);
 
-        notificationRepository.save(Notification.builder()
-                .userId(restaurantId)
-                .message(user.getFirstName() + " " + user.getLastName() + " (@" + user.getUsername() + ") is visiting your restaurant!")
-                .type("RESTAURANT_ARRIVAL")
-                .build());
+        notificationService.createRestaurantNotification(
+                restaurantId,
+                user.getFirstName() + " " + user.getLastName() + " (@" + user.getUsername() + ") is visiting your restaurant!",
+                "RESTAURANT_ARRIVAL"
+        );
 
         return Map.of(
                 "message", "Restaurant selected! A notification has been sent.",
@@ -398,15 +469,30 @@ public class RestaurantService {
         );
     }
 
+    // Saves the user's rating for a restaurant (1 to 5 stars).
+    // Ratings are one-time and not editable — each user can rate a restaurant at most once.
+    // The saved row is consumed by the Collaborative Filtering engine in Explore Mode.
+    // Also stamps the visit record so the rating is visible in visit history.
     public Map<String, String> rateVisit(Long userId, Long restaurantId, Integer ratingValue) {
         if (ratingValue < 1 || ratingValue > 5) {
             throw new RuntimeException("Rating must be between 1 and 5");
         }
 
+        // Reject the request if this user has already rated this restaurant
+        if (ratingRepository.findByUserUserIdAndRestaurantId(userId, restaurantId).isPresent()) {
+            throw new RuntimeException("You have already rated this restaurant");
+        }
+
+        // Verify the user has a confirmed visit to this restaurant before allowing rating
+        List<Visits> confirmedVisits = visitsRepository.findByUserUserIdAndRestaurantIdAndConfirmedByRestaurantTrue(userId, restaurantId);
+        if (confirmedVisits.isEmpty()) {
+            throw new RuntimeException("You must have a confirmed visit to this restaurant before rating");
+        }
+
         User user = userRepository.findById(userId).orElseThrow(() -> new RuntimeException("User not found"));
         Restaurant restaurant = restaurantRepository.findById(restaurantId).orElseThrow(() -> new RuntimeException("Restaurant not found"));
 
-        Rating rating = ratingRepository.findByUserUserIdAndRestaurantId(userId, restaurantId).orElse(new Rating());
+        Rating rating = new Rating();
         rating.setUser(user);
         rating.setRestaurant(restaurant);
         rating.setRatingValue(ratingValue);
@@ -433,6 +519,22 @@ public class RestaurantService {
         item.put("mode", visit.getMode());
         item.put("visitDate", visit.getVisitDate());
         item.put("confirmedByRestaurant", visit.getConfirmedByRestaurant());
+        return item;
+    }
+
+    private Map<String, Object> mapGroupRequest(GroupSession session) {
+        Map<String, Object> item = new LinkedHashMap<>();
+        item.put("visitId", session.getId());
+        item.put("sessionId", session.getId());
+        item.put("groupId", session.getGroup().getId());
+        item.put("groupName", session.getGroup().getGroupName());
+        item.put("username", session.getCreatedBy().getUsername());
+        item.put("firstName", session.getCreatedBy().getFirstName());
+        item.put("lastName", session.getCreatedBy().getLastName());
+        item.put("mode", "GROUP");
+        item.put("visitDate", session.getCreatedAt());
+        item.put("confirmedByRestaurant", session.getRestaurantConfirmed());
+        item.put("leaderConfirmed", session.getLeaderConfirmed());
         return item;
     }
 
@@ -530,5 +632,16 @@ public class RestaurantService {
             default:
                 return "";
         }
+    }
+
+    // Reset all restaurant points for a new week (called by scheduler)
+    public void resetWeeklyRestaurantPoints() {
+        List<Restaurant> allRestaurants = restaurantRepository.findAll();
+        LocalDateTime now = LocalDateTime.now();
+        for (Restaurant restaurant : allRestaurants) {
+            restaurant.setPoints(0);
+            restaurant.setPointsResetDate(now);
+        }
+        restaurantRepository.saveAll(allRestaurants);
     }
 }

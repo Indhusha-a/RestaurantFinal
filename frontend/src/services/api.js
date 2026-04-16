@@ -19,9 +19,14 @@ const topsisApi = axios.create({
 
 api.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem("token");
-    if (token && token !== "undefined" && token !== "null") {
-      config.headers.Authorization = `Bearer ${token}`;
+    // Only attach the user token if the request does not already carry
+    // its own Authorization header (e.g. restaurant-specific endpoints
+    // provide their own restaurantToken via getRestaurantAuthHeaders).
+    if (!config.headers["Authorization"]) {
+      const token = localStorage.getItem("token");
+      if (token && token !== "undefined" && token !== "null") {
+        config.headers.Authorization = `Bearer ${token}`;
+      }
     }
     return config;
   },
@@ -156,6 +161,24 @@ export const userAPI = {
       throw error.response?.data || { message: "Failed to fetch visit history" };
     }
   },
+
+  getNotifications: async () => {
+    try {
+      const response = await api.get("/users/notifications");
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: "Failed to fetch notifications" };
+    }
+  },
+
+  markNotificationsAsRead: async () => {
+    try {
+      const response = await api.put("/users/notifications/mark-read");
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: "Failed to mark notifications as read" };
+    }
+  },
 };
 
 export const restaurantAPI = {
@@ -257,6 +280,23 @@ export const restaurantAPI = {
         error.response?.data?.message ||
           error.message ||
           "Failed to confirm visit"
+      );
+    }
+  },
+
+  confirmGroupSession: async (sessionId) => {
+    try {
+      const response = await api.post(
+        `/restaurants/sessions/${sessionId}/confirm`,
+        {},
+        { headers: getRestaurantAuthHeaders() }
+      );
+      return response.data;
+    } catch (error) {
+      throw new Error(
+        error.response?.data?.message ||
+          error.message ||
+          "Failed to confirm group visit"
       );
     }
   },
@@ -593,12 +633,23 @@ export const groupAPI = {
       };
     }
   },
+
+  confirmGroupVisitation: async (groupId, sessionId) => {
+    try {
+      const response = await api.post(`/groups/${groupId}/session/${sessionId}/confirm`);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || {
+        message: "Failed to confirm group visitation",
+      };
+    }
+  },
 };
 
 export const leaderboardAPI = {
   getLeaderboard: async () => {
     try {
-      const response = await api.get("/leaderboard");
+      const response = await api.get("/leaderboard/groups");
       return response.data;
     } catch (error) {
       throw error.response?.data || { message: "Failed to fetch leaderboard" };
@@ -616,6 +667,32 @@ export const leaderboardAPI = {
 };
 
 export const adminAPI = {
+  login: async (credentials) => {
+    try {
+      const response = await api.post('/admin/login', credentials);
+      const data = response.data;
+
+      if (data.token) {
+        localStorage.setItem('token', data.token);
+
+        const userObj = {
+          userId: data.userId,
+          username: data.username,
+          email: data.email,
+          firstName: data.firstName,
+          lastName: data.lastName,
+          role: data.role
+        };
+
+        localStorage.setItem('user', JSON.stringify(userObj));
+      }
+
+      return data;
+    } catch (error) {
+      throw error.response?.data || { message: 'Admin login failed' };
+    }
+  },
+
   getPendingRestaurants: async () => {
     try {
       const response = await api.get("/admin/restaurants/pending");
@@ -629,7 +706,7 @@ export const adminAPI = {
 
   approveRestaurant: async (restaurantId) => {
     try {
-      const response = await api.post(`/admin/restaurants/${restaurantId}/approve`);
+      const response = await api.put(`/admin/restaurants/${restaurantId}/approve`);
       return response.data;
     } catch (error) {
       throw error.response?.data || { message: "Failed to approve restaurant" };
@@ -638,7 +715,7 @@ export const adminAPI = {
 
   getDeletionRequests: async () => {
     try {
-      const response = await api.get("/admin/deletion-requests");
+      const response = await api.get("/admin/users/deletion-requests");
       return response.data;
     } catch (error) {
       throw error.response?.data || {
