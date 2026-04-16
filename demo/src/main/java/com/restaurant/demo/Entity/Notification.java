@@ -19,7 +19,11 @@ public class Notification {
     private Long id;
 
     @Column(nullable = false)
-    private Long userId;
+    private Long recipientId;
+
+    @Column(nullable = false)
+    @Enumerated(EnumType.STRING)
+    private RecipientType recipientType; // Distinguishes USER from RESTAURANT recipients
 
     @Column(nullable = false)
     private String message;
@@ -34,5 +38,9 @@ public class Notification {
     @PrePersist
     protected void onCreate() {
         this.createdAt = LocalDateTime.now();
+    }
+
+    public enum RecipientType {
+        USER, RESTAURANT
     }
 }

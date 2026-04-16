@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import SplitAuthLayout from "../../components/layout/SplitAuthLayout";
 import { LogIn, AlertCircle } from "lucide-react";
 import { adminAPI } from "../../services/api";
@@ -100,9 +100,7 @@ export default function Login() {
             <span className="text-sm">Remember Me</span>
           </label>
 
-          <Link to="/forgot-password" className="text-sm text-primary hover:underline">
-            Forgot Password?
-          </Link>
+          <span className="text-sm text-muted-foreground">Admin access only</span>
         </div>
 
         <motion.button
@@ -126,10 +124,7 @@ export default function Login() {
         </motion.button>
 
         <p className="text-sm text-muted-foreground text-center">
-          Don't have an account?{" "}
-          <Link to="/register" className="text-primary font-semibold hover:underline">
-            Register
-          </Link>
+          Default demo admin: <span className="font-semibold">admin</span> / <span className="font-semibold">admin123</span>
         </p>
       </form>
     </SplitAuthLayout>

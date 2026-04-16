@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate } from "react-router-dom";
-import { User, Compass, Users, Bell, LogOut, Sparkles, ArrowRight, ChefHat, Star, X, Check } from "lucide-react";
+import { User, Compass, Users, Bell, LogOut, Sparkles, ArrowRight, ChefHat, Star, X, Check, Trophy } from "lucide-react";
 import { Link } from "react-router-dom";
 import FloatingIcons from "../components/ui/FloatingIcons";
 import { userAPI, restaurantAPI } from "../services/api";
@@ -71,6 +71,7 @@ export default function Dashboard() {
   const [hoveredStar, setHoveredStar]           = useState({ visitId: null, star: 0 });
   const [submittingRating, setSubmittingRating] = useState(null);
   const [ratedSuccess, setRatedSuccess]         = useState({});
+  const [ratingError, setRatingError]           = useState("");
 
   const navigate = useNavigate();
   const notifRef = useRef(null);
@@ -155,6 +156,11 @@ export default function Dashboard() {
       try {
         const data = await userAPI.getNotifications();
         setNotifications(Array.isArray(data) ? data : []);
+        // Mark notifications as read in the backend
+        if (notifCount > 0) {
+          await userAPI.markNotificationsAsRead();
+          setNotifCount(0); // Clear the badge locally
+        }
       } catch {
         setNotifications([]);
       } finally {
@@ -167,11 +173,14 @@ export default function Dashboard() {
   const handleOpenRatingModal = async () => {
     setShowRatingModal(true);
     setLoadingVisits(true);
+    setRatingError("");
     try {
       const data = await userAPI.getVisitHistory();
-      // Only individual visits are eligible for rating (group visits do not get rated)
-      const individual = (Array.isArray(data) ? data : []).filter(v => v.mode === "INDIVIDUAL");
-      setRatingVisits(individual);
+      // Only confirmed individual visits are eligible for rating (group visits and unconfirmed visits excluded)
+      const eligible = (Array.isArray(data) ? data : []).filter(
+        v => v.mode === "INDIVIDUAL" && v.confirmedByRestaurant === true
+      );
+      setRatingVisits(eligible);
     } catch {
       setRatingVisits([]);
     } finally {
@@ -182,6 +191,7 @@ export default function Dashboard() {
   // Submits a one-time rating that is saved in the ratings table and consumed by the CF engine
   const handleSubmitRating = async (restaurantId, visitId, star) => {
     setSubmittingRating(visitId);
+    setRatingError("");
     try {
       await restaurantAPI.rateVisit(restaurantId, star);
       // Mark this visit locally so the star row switches to a read-only display
@@ -191,6 +201,7 @@ export default function Dashboard() {
       setRatedSuccess(prev => ({ ...prev, [visitId]: true }));
     } catch (err) {
       console.error("Rating failed:", err);
+      setRatingError(err.message || "Failed to submit rating.");
     } finally {
       setSubmittingRating(null);
     }
@@ -217,6 +228,17 @@ export default function Dashboard() {
           </Link>
 
           <div className="flex items-center gap-4">
+            {/* Leaderboard button */}
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={() => navigate('/dashboard/leaderboard')}
+              className="hidden sm:flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-yellow-500/10 to-orange-500/10 border border-yellow-500/20 hover:border-yellow-500/50 transition-all text-sm font-medium"
+            >
+              <Trophy className="w-4 h-4 text-yellow-600" />
+              Leaderboard
+            </motion.button>
+
             {/* Rate My Visits button — opens the CF rating modal */}
             <motion.button
               whileHover={{ scale: 1.05 }}
@@ -477,6 +499,11 @@ export default function Dashboard() {
 
               {/* Visit list */}
               <div className="flex-1 overflow-y-auto">
+                {ratingError && (
+                  <div className="mx-6 mt-4 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                    {ratingError}
+                  </div>
+                )}
                 {loadingVisits ? (
                   <div className="flex items-center justify-center py-12">
                     <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />

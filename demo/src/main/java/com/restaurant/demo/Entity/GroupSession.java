@@ -47,4 +47,10 @@ public class GroupSession {
     @ManyToOne
     @JoinColumn(name = "winning_restaurant_id")
     private Restaurant winningRestaurant;
+
+    @Builder.Default
+    private Boolean restaurantConfirmed = false;
+
+    @Builder.Default
+    private Boolean leaderConfirmed = false;
 }

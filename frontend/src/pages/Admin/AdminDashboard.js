@@ -29,26 +29,29 @@ export default function AdminDashboard() {
   const [deletionRequests, setDeletionRequests] = useState([]);
 
   const [loading, setLoading] = useState(true);
+  const [growthData, setGrowthData] = useState([]);
 
   // Load all dashboard data when page opens
   useEffect(() => {
     fetchDashboardData();
   }, []);
 
-  // Get stats + pending restaurants + deletion requests
+  // Fetch stats, pending restaurants, deletion requests, and growth trends
   const fetchDashboardData = async () => {
     try {
       setLoading(true);
 
-      const [statsRes, pendingRes, deletionRes] = await Promise.all([
+      const [statsRes, pendingRes, deletionRes, growthRes] = await Promise.all([
         fetch("http://localhost:8080/api/admin/dashboard/stats"),
         fetch("http://localhost:8080/api/admin/restaurants/pending"),
         fetch("http://localhost:8080/api/admin/users/deletion-requests"),
+        fetch("http://localhost:8080/api/admin/analytics/growth-trends"),
       ]);
 
       const statsData = await statsRes.json();
       const pendingData = await pendingRes.json();
       const deletionData = await deletionRes.json();
+      const growthTrendsData = await growthRes.json();
 
       if (!statsRes.ok) {
         throw new Error(statsData.message || "Failed to load dashboard stats");
@@ -57,6 +60,7 @@ export default function AdminDashboard() {
       setStats(statsData);
       setPendingRestaurantsList(Array.isArray(pendingData) ? pendingData.slice(0, 5) : []);
       setDeletionRequests(Array.isArray(deletionData) ? deletionData.slice(0, 5) : []);
+      setGrowthData(Array.isArray(growthTrendsData) ? growthTrendsData : []);
     } catch (error) {
       console.error("Dashboard load error:", error);
     } finally {
@@ -72,17 +76,8 @@ export default function AdminDashboard() {
     { title: "Total Restaurants", value: stats.totalRestaurants, icon: Store },
   ];
 
-  // Chart data
-  const growthData = [
-    { label: "Jan", restaurants: 12 },
-    { label: "Feb", restaurants: 18 },
-    { label: "Mar", restaurants: 25 },
-    { label: "Apr", restaurants: 33 },
-    { label: "May", restaurants: 42 },
-    { label: "Jun", restaurants: stats.totalRestaurants || 55 },
-  ];
-
   // Pie chart split
+    // Pie chart split (no longer need static growthData)
   const approvalSplit = [
     { name: "Approved", value: stats.approvedRestaurants },
     { name: "Pending", value: stats.pendingRestaurants },

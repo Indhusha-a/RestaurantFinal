@@ -171,6 +171,26 @@ public class AdminController {
     // =========================
 
     // Returns summary values used in admin dashboard cards/charts
+    @GetMapping("/analytics/activity")
+    public ResponseEntity<?> getSystemActivity() {
+        return ResponseEntity.ok(adminService.getSystemActivityMetrics());
+    }
+
+    @GetMapping("/analytics/growth-trends")
+    public ResponseEntity<?> getGrowthTrends() {
+        return ResponseEntity.ok(adminService.getMonthlyGrowthTrends());
+    }
+
+    @GetMapping("/analytics/topsis-metrics")
+    public ResponseEntity<?> getTopsisAnalytics() {
+        return ResponseEntity.ok(adminService.getTopsisMetrics());
+    }
+
+    @GetMapping("/analytics/cf-metrics")
+    public ResponseEntity<?> getCfAnalytics() {
+        return ResponseEntity.ok(adminService.getCfMetrics());
+    }
+
     @GetMapping("/dashboard/stats")
     public ResponseEntity<?> getDashboardStats() {
         return ResponseEntity.ok(adminService.getDashboardStats());

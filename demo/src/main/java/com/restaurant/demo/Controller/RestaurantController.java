@@ -89,6 +89,19 @@ public class RestaurantController {
         }
     }
 
+    @PostMapping("/sessions/{sessionId}/confirm")
+    public ResponseEntity<?> confirmGroupSession(
+            @RequestHeader("Authorization") String authHeader,
+            @PathVariable Long sessionId
+    ) {
+        try {
+            Long restaurantId = restaurantService.extractRestaurantId(authHeader);
+            return ResponseEntity.ok(restaurantService.confirmGroupSession(restaurantId, sessionId));
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
+        }
+    }
+
     @GetMapping
     public List<Restaurant> getAll() {
         return restaurantService.getAllRestaurants();

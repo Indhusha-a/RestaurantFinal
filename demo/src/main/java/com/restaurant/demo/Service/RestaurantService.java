@@ -1,6 +1,7 @@
 package com.restaurant.demo.Service;
 
 import com.restaurant.demo.Entity.Notification;
+import com.restaurant.demo.Entity.GroupSession;
 import com.restaurant.demo.Entity.Rating;
 import com.restaurant.demo.Entity.Restaurant;
 import com.restaurant.demo.Entity.Speciality;
@@ -11,6 +12,7 @@ import com.restaurant.demo.Repository.NotificationRepository;
 import com.restaurant.demo.Repository.RatingRepository;
 import com.restaurant.demo.Repository.RestaurantRepository;
 import com.restaurant.demo.Repository.UserRepository;
+import com.restaurant.demo.Repository.GroupSessionRepository;
 import com.restaurant.demo.Repository.VisitsRepository;
 import com.restaurant.demo.enums.BudgetRange;
 import jakarta.annotation.PostConstruct;
@@ -32,8 +34,10 @@ public class RestaurantService {
     private final VisitsRepository visitsRepository;
     private final UserRepository userRepository;
     private final NotificationRepository notificationRepository;
+    private final NotificationService notificationService;
     private final TagService tagService;
     private final SpecialityService specialityService;
+    private final GroupSessionRepository groupSessionRepository;
 
     // Basic registration — used when the admin manually adds a restaurant without the approval flow
     public Restaurant registerRestaurant(Restaurant restaurant) {
@@ -267,16 +271,18 @@ public class RestaurantService {
     }
 
     public List<Notification> getRestaurantNotifications(Long restaurantId) {
-        return notificationRepository.findByUserIdOrderByCreatedAtDesc(restaurantId);
+        // Fetch only restaurant-targeted notifications for the dashboard
+        return notificationRepository.findByRecipientIdAndRecipientTypeOrderByCreatedAtDesc(
+                restaurantId, Notification.RecipientType.RESTAURANT);
     }
 
     public Map<String, Object> getRestaurantActivities(Long restaurantId) {
         List<Visits> individual = visitsRepository.findByRestaurantIdAndModeOrderByVisitDateDesc(restaurantId, "INDIVIDUAL");
-        List<Visits> group = visitsRepository.findByRestaurantIdAndModeOrderByVisitDateDesc(restaurantId, "GROUP");
+        List<GroupSession> groupSessions = groupSessionRepository.findByWinningRestaurantIdOrderByCreatedAtDesc(restaurantId);
 
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("individualRequests", individual.stream().map(this::mapVisit).collect(Collectors.toList()));
-        result.put("groupRequests", group.stream().map(this::mapVisit).collect(Collectors.toList()));
+        result.put("groupRequests", groupSessions.stream().map(this::mapGroupRequest).collect(Collectors.toList()));
         return result;
     }
 
@@ -291,11 +297,11 @@ public class RestaurantService {
         visit.setConfirmedByRestaurant(true);
         visitsRepository.save(visit);
 
-        notificationRepository.save(Notification.builder()
-                .userId(visit.getUser().getUserId())
-                .message("Your visit to " + visit.getRestaurant().getName() + " was confirmed by the restaurant.")
-                .type("VISIT_CONFIRMED")
-                .build());
+        notificationService.createUserNotification(
+                visit.getUser().getUserId(),
+                "Your visit to " + visit.getRestaurant().getName() + " was confirmed by the restaurant.",
+                "VISIT_CONFIRMED"
+        );
 
         return Map.of("message", "Visit confirmed successfully");
     }
@@ -313,6 +319,30 @@ public class RestaurantService {
                 "points", restaurant.getPoints(),
                 "boostRequested", true
         );
+    }
+
+    // Confirm group session visitation by restaurant owner (restaurant confirmation step)
+    public Map<String, Object> confirmGroupSession(Long restaurantId, Long sessionId) {
+        // Verify the session exists and matches this restaurant as winner
+        GroupSession session = groupSessionRepository.findById(sessionId)
+                .orElseThrow(() -> new RuntimeException("Session not found"));
+
+        if (session.getWinningRestaurant() == null || !session.getWinningRestaurant().getId().equals(restaurantId)) {
+            throw new RuntimeException("This session's winning restaurant does not match your restaurant");
+        }
+
+        session.setRestaurantConfirmed(true);
+        groupSessionRepository.save(session);
+
+        // Notify group leader to confirm the visitation on their end
+        Long groupLeaderId = session.getCreatedBy().getUserId();
+        notificationService.createUserNotification(
+                groupLeaderId,
+                "Restaurant " + session.getWinningRestaurant().getName() + " confirmed your group's visit. Please confirm on your end.",
+                "GROUP_VISIT_RESTAURANT_CONFIRMED"
+        );
+
+        return Map.of("message", "Group visit confirmation recorded. Group leader will now confirm.");
     }
 
     public Map<String, Object> getPerformance(Long restaurantId) {
@@ -420,14 +450,15 @@ public class RestaurantService {
                 .restaurant(restaurant)
                 .mode("INDIVIDUAL")
                 .confirmedByRestaurant(false)
+                .visitDate(LocalDateTime.now())
                 .build();
         visitsRepository.save(visit);
 
-        notificationRepository.save(Notification.builder()
-                .userId(restaurantId)
-                .message(user.getFirstName() + " " + user.getLastName() + " (@" + user.getUsername() + ") is visiting your restaurant!")
-                .type("RESTAURANT_ARRIVAL")
-                .build());
+        notificationService.createRestaurantNotification(
+                restaurantId,
+                user.getFirstName() + " " + user.getLastName() + " (@" + user.getUsername() + ") is visiting your restaurant!",
+                "RESTAURANT_ARRIVAL"
+        );
 
         return Map.of(
                 "message", "Restaurant selected! A notification has been sent.",
@@ -450,6 +481,12 @@ public class RestaurantService {
         // Reject the request if this user has already rated this restaurant
         if (ratingRepository.findByUserUserIdAndRestaurantId(userId, restaurantId).isPresent()) {
             throw new RuntimeException("You have already rated this restaurant");
+        }
+
+        // Verify the user has a confirmed visit to this restaurant before allowing rating
+        List<Visits> confirmedVisits = visitsRepository.findByUserUserIdAndRestaurantIdAndConfirmedByRestaurantTrue(userId, restaurantId);
+        if (confirmedVisits.isEmpty()) {
+            throw new RuntimeException("You must have a confirmed visit to this restaurant before rating");
         }
 
         User user = userRepository.findById(userId).orElseThrow(() -> new RuntimeException("User not found"));
@@ -482,6 +519,22 @@ public class RestaurantService {
         item.put("mode", visit.getMode());
         item.put("visitDate", visit.getVisitDate());
         item.put("confirmedByRestaurant", visit.getConfirmedByRestaurant());
+        return item;
+    }
+
+    private Map<String, Object> mapGroupRequest(GroupSession session) {
+        Map<String, Object> item = new LinkedHashMap<>();
+        item.put("visitId", session.getId());
+        item.put("sessionId", session.getId());
+        item.put("groupId", session.getGroup().getId());
+        item.put("groupName", session.getGroup().getGroupName());
+        item.put("username", session.getCreatedBy().getUsername());
+        item.put("firstName", session.getCreatedBy().getFirstName());
+        item.put("lastName", session.getCreatedBy().getLastName());
+        item.put("mode", "GROUP");
+        item.put("visitDate", session.getCreatedAt());
+        item.put("confirmedByRestaurant", session.getRestaurantConfirmed());
+        item.put("leaderConfirmed", session.getLeaderConfirmed());
         return item;
     }
 
@@ -579,5 +632,16 @@ public class RestaurantService {
             default:
                 return "";
         }
+    }
+
+    // Reset all restaurant points for a new week (called by scheduler)
+    public void resetWeeklyRestaurantPoints() {
+        List<Restaurant> allRestaurants = restaurantRepository.findAll();
+        LocalDateTime now = LocalDateTime.now();
+        for (Restaurant restaurant : allRestaurants) {
+            restaurant.setPoints(0);
+            restaurant.setPointsResetDate(now);
+        }
+        restaurantRepository.saveAll(allRestaurants);
     }
 }

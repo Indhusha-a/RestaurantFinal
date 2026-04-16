@@ -128,4 +128,16 @@ public class UserController {
             return ResponseEntity.status(401).body(Map.of("message", e.getMessage()));
         }
     }
+
+    // Endpoint to mark notifications as read
+    @PutMapping("/api/users/notifications/mark-read")
+    public ResponseEntity<?> markNotificationsAsRead(@RequestHeader("Authorization") String authHeader) {
+        try {
+            Long userId = userService.extractUserId(authHeader);
+            userService.markNotificationsAsRead(userId);
+            return ResponseEntity.ok(Map.of("message", "Notifications marked as read"));
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
+        }
+    }
 }

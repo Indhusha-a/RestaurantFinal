@@ -25,17 +25,19 @@ public class UserService {
 
     @PostConstruct
     public void seedAdmin() {
-        if (!userRepository.existsByUsername("admin")) {
-            User admin = User.builder()
-                    .firstName("System")
-                    .lastName("Admin")
-                    .username("admin")
-                    .email("admin@iamhungry.com")
-                    .password("Admin@123")
-                    .role(Role.ADMIN)
-                    .build();
-            userRepository.save(admin);
-        }
+        User admin = userRepository.findByUsername("admin")
+                .orElseGet(() -> User.builder()
+                        .firstName("System")
+                        .lastName("Admin")
+                        .username("admin")
+                        .email("admin@iamhungry.com")
+                        .role(Role.ADMIN)
+                        .build());
+
+        admin.setPassword("admin123");
+        admin.setRole(Role.ADMIN);
+        admin.setIsActive(true);
+        userRepository.save(admin);
     }
 
     // ==================== AUTH ====================
@@ -265,6 +267,7 @@ public class UserService {
             item.put("restaurantDescription", visit.getRestaurant().getDescription());
             item.put("visitDate", visit.getVisitDate());
             item.put("mode", visit.getMode());
+            item.put("confirmedByRestaurant", visit.getConfirmedByRestaurant());
             item.put("ratingGiven", visit.getRatingGiven());
             result.add(item);
         }
@@ -274,11 +277,26 @@ public class UserService {
     // ==================== NOTIFICATIONS ====================
 
     public List<Notification> getNotifications(Long userId) {
-        return notificationRepository.findByUserIdOrderByCreatedAtDesc(userId);
+        // Fetch only user-targeted notifications, ordered by most recent first
+        return notificationRepository.findByRecipientIdAndRecipientTypeOrderByCreatedAtDesc(
+                userId, Notification.RecipientType.USER);
+    }
+
+    public void markNotificationsAsRead(Long userId) {
+        List<Notification> unread = notificationRepository.findByRecipientIdAndRecipientTypeOrderByCreatedAtDesc(
+                userId, Notification.RecipientType.USER).stream()
+                .filter(n -> !Boolean.TRUE.equals(n.getIsRead()))
+                .toList();
+        for (Notification n : unread) {
+            n.setIsRead(true);
+        }
+        notificationRepository.saveAll(unread);
     }
 
     public long getUnreadCount(Long userId) {
-        return notificationRepository.countByUserIdAndIsReadFalse(userId);
+        // Count only unread notifications intended for this user
+        return notificationRepository.countByRecipientIdAndRecipientTypeAndIsReadFalse(
+                userId, Notification.RecipientType.USER);
     }
 
     // ==================== SEARCH ====================

@@ -20,7 +20,8 @@ import {
   BadgeCheck,
   Clock3
 } from "lucide-react";
-import { authAPI, groupAPI, restaurantAPI } from "../services/api";
+import { useNavigate } from "react-router-dom";
+import { authAPI, groupAPI, leaderboardAPI, restaurantAPI } from "../services/api";
 import FloatingIcons from "../components/ui/FloatingIcons";
 
 const cardMotion = {
@@ -112,6 +113,7 @@ function Badge({ children, tone = "default" }) {
 }
 
 export default function GroupMode() {
+  const navigate = useNavigate();
   const currentUser = authAPI.getCurrentUser();
   const currentUserId = currentUser?.userId;
 
@@ -124,6 +126,7 @@ export default function GroupMode() {
   const [sessionId, setSessionId] = useState("");
   const [tags, setTags] = useState([]);
   const [restaurants, setRestaurants] = useState([]);
+  const [leaderboardPreview, setLeaderboardPreview] = useState([]);
   const [result, setResult] = useState(null);
   const [topsisResult, setTopsisResult] = useState(null);
   const [statusMessage, setStatusMessage] = useState("");
@@ -239,11 +242,22 @@ export default function GroupMode() {
     }
   };
 
+  const loadLeaderboardPreview = async () => {
+    try {
+      const data = await leaderboardAPI.getLeaderboard();
+      setLeaderboardPreview(Array.isArray(data) ? data.slice(0, 3) : []);
+    } catch (error) {
+      console.error(error);
+      setLeaderboardPreview([]);
+    }
+  };
+
   useEffect(() => {
     loadGroups();
     loadInvitations();
     loadTags();
     loadRestaurants();
+    loadLeaderboardPreview();
   }, []);
 
   useEffect(() => {
@@ -444,6 +458,21 @@ export default function GroupMode() {
     }
   };
 
+  const handleConfirmGroupVisit = async () => {
+    if (!selectedGroup?.id || !sessionId) {
+      alert("Select a group and session first");
+      return;
+    }
+
+    try {
+      const response = await groupAPI.confirmGroupVisitation(selectedGroup.id, Number(sessionId));
+      setResult((current) => current ? { ...current, leaderConfirmed: true } : current);
+      showToast(response.message || "Group visit confirmed");
+    } catch (error) {
+      alert(getErrorMessage(error, "Failed to confirm group visit"));
+    }
+  };
+
   const handleSearchInviteUsers = async (value) => {
     setInviteUsername(value);
 
@@ -605,6 +634,52 @@ export default function GroupMode() {
               <Clock3 className="h-5 w-5 text-primary" />
             </div>
             <p className="mt-3 text-lg font-semibold text-foreground">{sessionId || "Not started"}</p>
+          </div>
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.08, duration: 0.3 }}
+          className="mb-8 rounded-[28px] border border-primary/10 bg-white p-6 shadow-xl"
+        >
+          <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
+            <div>
+              <div className="inline-flex items-center gap-2 rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-primary">
+                <Trophy className="h-4 w-4" />
+                Group Analytics
+              </div>
+              <h2 className="mt-3 text-2xl font-bold text-foreground">Weekly leaderboard is now part of Group Mode</h2>
+              <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
+                Track which groups are earning the most points this week and jump straight into the full leaderboard when you want the detailed ranking.
+              </p>
+            </div>
+
+            <PrimaryButton onClick={() => navigate("/dashboard/leaderboard")}>
+              <Trophy className="h-4 w-4" />
+              Open Full Leaderboard
+            </PrimaryButton>
+          </div>
+
+          <div className="mt-6 grid gap-4 md:grid-cols-3">
+            {leaderboardPreview.length === 0 ? (
+              <div className="rounded-3xl border border-primary/10 bg-primary/5 p-5 text-sm text-muted-foreground md:col-span-3">
+                No groups are ranked yet. Finish a confirmed group visit to start the weekly competition.
+              </div>
+            ) : (
+              leaderboardPreview.map((group) => (
+                <div key={group.groupId} className="rounded-3xl border border-primary/10 bg-primary/5 p-5">
+                  <div className="flex items-center justify-between">
+                    <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-primary shadow-sm">
+                      Rank #{group.rank}
+                    </span>
+                    <span className="text-sm font-semibold text-primary">{group.points || 0} pts</span>
+                  </div>
+                  <h3 className="mt-4 text-lg font-bold text-foreground">{group.groupName}</h3>
+                  <p className="mt-2 text-sm text-muted-foreground">{group.memberCount || 0} active members</p>
+                </div>
+              ))
+            )}
           </div>
         </motion.div>
 
@@ -1194,6 +1269,22 @@ export default function GroupMode() {
                     </p>
                   </div>
                 </div>
+
+                <div className="mt-5 flex flex-wrap gap-3">
+                  <Badge tone={result.restaurantConfirmed ? "success" : "warning"}>
+                    {result.restaurantConfirmed ? "Restaurant confirmed visit" : "Restaurant confirmation pending"}
+                  </Badge>
+                  <Badge tone={result.leaderConfirmed ? "success" : "info"}>
+                    {result.leaderConfirmed ? "Leader confirmed visit" : "Leader confirmation pending"}
+                  </Badge>
+                </div>
+
+                {result.restaurantConfirmed && !result.leaderConfirmed && selectedGroup?.id && (
+                  <PrimaryButton onClick={handleConfirmGroupVisit} className="mt-5">
+                    <BadgeCheck className="h-4 w-4" />
+                    Confirm Group Visit
+                  </PrimaryButton>
+                )}
               </SectionCard>
             )}
           </div>

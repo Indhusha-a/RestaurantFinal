@@ -185,13 +185,13 @@ export default function ManageRestaurants({ search = "" }) {
                           <div className="flex flex-col gap-1">
                             <span
                               className={`inline-flex w-fit items-center px-3 py-1 rounded-full text-xs font-semibold border ${workflowStatusClass(
-                                restaurant.status
+                                restaurant.approvalStatus
                               )}`}
                             >
-                              {restaurant.status || "N/A"}
+                              {restaurant.approvalStatus || "N/A"}
                             </span>
 
-                            {restaurant.status === "REJECTED" && restaurant.rejectionReason && (
+                            {restaurant.approvalStatus === "REJECTED" && restaurant.rejectionReason && (
                               <p className="text-red-500 text-xs">
                                 {restaurant.rejectionReason}
                               </p>
