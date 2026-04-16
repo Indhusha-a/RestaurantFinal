@@ -1,10 +1,18 @@
 package com.restaurant.demo.Service;
 
 import com.restaurant.demo.Dto.AdminRestaurantRequest;
+import com.restaurant.demo.Dto.TopsisRankedRestaurantDto;
+import com.restaurant.demo.Dto.TopsisResponseDto;
+import com.restaurant.demo.Entity.GroupSession;
+import com.restaurant.demo.Entity.Rating;
 import com.restaurant.demo.Entity.Restaurant;
 import com.restaurant.demo.Entity.User;
+import com.restaurant.demo.Entity.Visits;
+import com.restaurant.demo.Repository.GroupSessionRepository;
+import com.restaurant.demo.Repository.RatingRepository;
 import com.restaurant.demo.Repository.RestaurantRepository;
 import com.restaurant.demo.Repository.UserRepository;
+import com.restaurant.demo.Repository.VisitsRepository;
 import com.restaurant.demo.enums.Role;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -13,7 +21,18 @@ import org.springframework.web.multipart.MultipartFile;
 import java.io.File;
 import java.io.IOException;
 import java.time.LocalDateTime;
-import java.util.*;
+import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
+import java.util.Base64;
+import java.util.Calendar;
+import java.util.Comparator;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -21,12 +40,11 @@ public class AdminService {
 
     private final UserRepository userRepository;
     private final RestaurantRepository restaurantRepository;
+    private final GroupSessionRepository groupSessionRepository;
+    private final RatingRepository ratingRepository;
+    private final VisitsRepository visitsRepository;
+    private final GroupService groupService;
 
-    // =========================
-    // ADMIN LOGIN
-    // =========================
-    // This method checks whether the given username/email belongs to an admin,
-    // then validates the password and returns basic login details.
     public Map<String, Object> adminLogin(String usernameOrEmail, String password) {
         Optional<User> optionalUser =
                 userRepository.findByUsernameOrEmail(usernameOrEmail, usernameOrEmail);
@@ -49,7 +67,6 @@ public class AdminService {
             throw new RuntimeException("Admin account is deactivated");
         }
 
-        // Very simple token just for current project flow
         String token = Base64.getEncoder()
                 .encodeToString(("user:" + user.getUserId()).getBytes());
 
@@ -66,15 +83,9 @@ public class AdminService {
         return response;
     }
 
-    // =========================
-    // ADMIN MANUAL ADD RESTAURANT
-    // =========================
-    // This is used when admin manually adds a restaurant to the system.
-    // Since admin is the one adding it, we directly mark it as APPROVED.
     public Restaurant addRestaurant(AdminRestaurantRequest request) {
         String savedImagePath = saveImage(request.getImage());
 
-        // Build the restaurant entity — admin-added restaurants skip the approval step
         Restaurant restaurant = Restaurant.builder()
                 .name(request.getName())
                 .description(request.getDescription())
@@ -83,97 +94,69 @@ public class AdminService {
                 .locationLink(request.getLocationLink())
                 .budgetRange(request.getBudgetRange())
                 .image1Path(savedImagePath)
-                .isApproved(true)               // admin bypass: directly approved
+                .isApproved(true)
                 .isActive(true)
                 .isRejected(false)
                 .points(0)
                 .boostRequested(false)
-                .approvalStatus("APPROVED")      // approval workflow status field
-                .rejectionReason(null)           // no rejection reason since it is approved
+                .approvalStatus("APPROVED")
+                .rejectionReason(null)
                 .approvedAt(LocalDateTime.now())
                 .build();
 
         return restaurantRepository.save(restaurant);
     }
 
-    // =========================
-    // RESTAURANT MANAGEMENT
-    // =========================
-
-    // Returns all restaurants for manage-restaurants page, newest first
     public List<Restaurant> getAllRestaurants() {
         return restaurantRepository.findAll()
                 .stream()
                 .sorted(Comparator.comparing(Restaurant::getId).reversed())
-                .collect(java.util.stream.Collectors.toList());
+                .collect(Collectors.toList());
     }
 
-    // Returns only restaurants waiting for admin action (approvalStatus = PENDING)
     public List<Restaurant> getPendingRestaurants() {
         return restaurantRepository.findAll()
                 .stream()
                 .filter(restaurant -> "PENDING".equalsIgnoreCase(restaurant.getApprovalStatus()))
                 .sorted(Comparator.comparing(Restaurant::getId).reversed())
-                .collect(java.util.stream.Collectors.toList());
+                .collect(Collectors.toList());
     }
 
-    // Approves a pending restaurant
     public Restaurant approveRestaurant(Long restaurantId) {
         Restaurant restaurant = restaurantRepository.findById(restaurantId)
                 .orElseThrow(() -> new RuntimeException("Restaurant not found"));
 
-        // Mark this restaurant as approved
         restaurant.setIsApproved(true);
         restaurant.setIsRejected(false);
-
-        // Update the approval workflow status — this is what the system checks everywhere
+        restaurant.setIsActive(true);
         restaurant.setApprovalStatus("APPROVED");
-
-        // Clear any old rejection reason from a previous rejection if present
         restaurant.setRejectionReason(null);
-
-        // Record when admin approved this registration
         restaurant.setApprovedAt(LocalDateTime.now());
 
         return restaurantRepository.save(restaurant);
     }
 
-    // Rejects a restaurant but keeps the record in database
-    // This is better than hard delete because admin can keep rejection history.
     public Restaurant rejectRestaurant(Long restaurantId, String reason) {
         Restaurant restaurant = restaurantRepository.findById(restaurantId)
                 .orElseThrow(() -> new RuntimeException("Restaurant not found"));
 
-        // When rejected, flip both flags so the restaurant dashboard shows the correct state
         restaurant.setIsApproved(false);
         restaurant.setIsRejected(true);
-
-        // Update the approval workflow status to REJECTED
         restaurant.setApprovalStatus("REJECTED");
-
-        // Store the reason admin gave for rejecting this application
         restaurant.setRejectionReason(reason);
-
-        // Clear the approved date since it was never approved
         restaurant.setApprovedAt(null);
 
         return restaurantRepository.save(restaurant);
     }
 
-    // Returns rejected restaurants — used if a separate rejected list is shown in admin UI
     public List<Restaurant> getRejectedRestaurants() {
         return restaurantRepository.findAll()
                 .stream()
                 .filter(restaurant -> "REJECTED".equalsIgnoreCase(restaurant.getApprovalStatus()))
                 .sorted(Comparator.comparing(Restaurant::getId).reversed())
-                .collect(java.util.stream.Collectors.toList());
+                .collect(Collectors.toList());
     }
 
-    // =========================
-    // USER MANAGEMENT (LIMITED)
-    // =========================
-
-    // Admin can only view limited details of normal users
     public List<Map<String, Object>> getAllUsersLimited() {
         List<User> users = userRepository.findByIsActiveTrue();
         List<Map<String, Object>> result = new ArrayList<>();
@@ -192,7 +175,6 @@ public class AdminService {
         return result;
     }
 
-    // Returns only users who requested account deletion
     public List<Map<String, Object>> getDeletionRequests() {
         List<User> users = userRepository.findByDeletionRequestedTrue();
         List<Map<String, Object>> result = new ArrayList<>();
@@ -210,10 +192,6 @@ public class AdminService {
         return result;
     }
 
-    // Soft-deletes a normal user after admin approval
-    // We do NOT hard-delete the user row because their visits and ratings are still
-    // linked to restaurant statistics. Setting isActive=false blocks future logins
-    // while keeping the historical data intact.
     public void approveUserDeletion(Long userId) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("User not found"));
@@ -222,20 +200,12 @@ public class AdminService {
             throw new RuntimeException("Only normal users can be deleted from this section");
         }
 
-        // Deactivate the account so the login check rejects them with a clear message
         user.setIsActive(false);
-
-        // Clear the deletion request flag since the action has been processed
         user.setDeletionRequested(false);
 
         userRepository.save(user);
     }
 
-    // =========================
-    // DASHBOARD STATS
-    // =========================
-
-    // Returns card values for admin dashboard
     public Map<String, Object> getDashboardStats() {
         long totalUsers = userRepository.findAll().stream()
                 .filter(user -> user.getRole() == Role.USER)
@@ -246,16 +216,12 @@ public class AdminService {
                 .count();
 
         long totalRestaurants = restaurantRepository.count();
-
-        // Count by approvalStatus field to get accurate breakdown for the admin dashboard cards
         long pendingRestaurants = restaurantRepository.findAll().stream()
                 .filter(restaurant -> "PENDING".equalsIgnoreCase(restaurant.getApprovalStatus()))
                 .count();
-
         long approvedRestaurants = restaurantRepository.findAll().stream()
                 .filter(restaurant -> "APPROVED".equalsIgnoreCase(restaurant.getApprovalStatus()))
                 .count();
-
         long rejectedRestaurants = restaurantRepository.findAll().stream()
                 .filter(restaurant -> "REJECTED".equalsIgnoreCase(restaurant.getApprovalStatus()))
                 .count();
@@ -271,11 +237,6 @@ public class AdminService {
         return stats;
     }
 
-    // =========================
-    // IMAGE SAVE HELPER
-    // =========================
-
-    // Saves uploaded image to local uploads folder
     private String saveImage(MultipartFile image) {
         if (image == null || image.isEmpty()) {
             return null;
@@ -305,5 +266,202 @@ public class AdminService {
         } catch (IOException e) {
             throw new RuntimeException("Failed to save image");
         }
+    }
+
+    public Map<String, Object> getSystemActivityMetrics() {
+        long totalRegisteredUsers = userRepository.findAll().stream()
+                .filter(u -> u.getRole() == Role.USER).count();
+
+        long currentlyActiveUsers = userRepository.findAll().stream()
+                .filter(u -> u.getRole() == Role.USER && Boolean.TRUE.equals(u.getIsActive())).count();
+
+        long totalRegisteredRestaurants = restaurantRepository.count();
+        long activeGroupSessions = groupSessionRepository.countByStatusIgnoreCase("OPEN");
+        long completedGroupSessions = groupSessionRepository.countByStatusIgnoreCase("CLOSED");
+
+        Map<String, Object> activity = new LinkedHashMap<>();
+        activity.put("totalRegisteredUsers", totalRegisteredUsers);
+        activity.put("currentlyActiveUsers", currentlyActiveUsers);
+        activity.put("activeGroupSessions", activeGroupSessions);
+        activity.put("totalRegisteredRestaurants", totalRegisteredRestaurants);
+        activity.put("completedGroupSessions", completedGroupSessions);
+
+        return activity;
+    }
+
+    public List<Map<String, Object>> getMonthlyGrowthTrends() {
+        List<Restaurant> restaurants = restaurantRepository.findAll();
+        List<Map<String, Object>> trends = new ArrayList<>();
+        String[] months = {"Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"};
+
+        for (int i = 0; i < 6; i++) {
+            int monthNum = 1 + (Calendar.getInstance().get(Calendar.MONTH) - 5 + i + 12) % 12;
+            String monthLabel = months[monthNum - 1];
+            Map<String, Object> point = new LinkedHashMap<>();
+            point.put("label", monthLabel);
+            point.put("restaurants", restaurants.stream()
+                    .filter(r -> r.getApprovedAt() != null && r.getApprovedAt().getMonthValue() == monthNum)
+                    .count());
+            trends.add(point);
+        }
+
+        return trends;
+    }
+
+    public Map<String, Object> getTopsisMetrics() {
+        List<GroupSession> closedSessions = groupSessionRepository.findByStatusIgnoreCase("CLOSED").stream()
+                .filter(session -> session.getWinningRestaurant() != null)
+                .sorted(Comparator.comparing(GroupSession::getCreatedAt))
+                .collect(Collectors.toList());
+
+        if (closedSessions.isEmpty()) {
+            return Map.of(
+                    "rank1SuccessRate", 0.0,
+                    "top3ContainmentRate", 0.0,
+                    "groupSatisfactionTrend", "Not enough data",
+                    "confirmedVisitRate", 0.0,
+                    "outcomeDistribution", Map.of(),
+                    "analysisCoverage", 0
+            );
+        }
+
+        int analyzedSessions = 0;
+        int rank1Wins = 0;
+        int top3Wins = 0;
+        Map<String, Integer> outcomeDistribution = new LinkedHashMap<>();
+        List<Double> olderScores = new ArrayList<>();
+        List<Double> recentScores = new ArrayList<>();
+
+        for (int index = 0; index < closedSessions.size(); index++) {
+            GroupSession session = closedSessions.get(index);
+            try {
+                TopsisResponseDto response = groupService.generateTopsisRecommendations(session.getId());
+                if (response == null || response.getResults() == null) {
+                    continue;
+                }
+
+                Optional<TopsisRankedRestaurantDto> match = response.getResults().stream()
+                        .filter(item -> Objects.equals(item.getRestaurant_id(), session.getWinningRestaurant().getId()))
+                        .findFirst();
+
+                if (match.isEmpty()) {
+                    continue;
+                }
+
+                analyzedSessions++;
+                int rank = match.get().getRank() == null ? -1 : match.get().getRank();
+                if (rank == 1) {
+                    rank1Wins++;
+                }
+                if (rank > 0 && rank <= 3) {
+                    top3Wins++;
+                }
+
+                outcomeDistribution.merge(rank > 0 ? "Rank " + rank : "Unranked", 1, Integer::sum);
+
+                Double groupMatch = match.get().getGroup_match_percentage();
+                if (groupMatch != null) {
+                    if (index < closedSessions.size() / 2) {
+                        olderScores.add(groupMatch);
+                    } else {
+                        recentScores.add(groupMatch);
+                    }
+                }
+            } catch (RuntimeException ex) {
+                // Keep analytics resilient even if the external TOPSIS service is unavailable.
+            }
+        }
+
+        double confirmedVisitRate = percentage(
+                closedSessions.stream()
+                        .filter(session -> Boolean.TRUE.equals(session.getRestaurantConfirmed()) && Boolean.TRUE.equals(session.getLeaderConfirmed()))
+                        .count(),
+                closedSessions.size()
+        );
+
+        Map<String, Object> metrics = new LinkedHashMap<>();
+        metrics.put("rank1SuccessRate", percentage(rank1Wins, analyzedSessions));
+        metrics.put("top3ContainmentRate", percentage(top3Wins, analyzedSessions));
+        metrics.put("groupSatisfactionTrend", deriveTrend(olderScores, recentScores));
+        metrics.put("confirmedVisitRate", confirmedVisitRate);
+        metrics.put("outcomeDistribution", outcomeDistribution);
+        metrics.put("analysisCoverage", analyzedSessions);
+        return metrics;
+    }
+
+    public Map<String, Object> getCfMetrics() {
+        List<Rating> ratings = ratingRepository.findAll();
+        List<Visits> confirmedIndividualVisits = visitsRepository.findAll().stream()
+                .filter(visit -> "INDIVIDUAL".equalsIgnoreCase(visit.getMode()))
+                .filter(visit -> Boolean.TRUE.equals(visit.getConfirmedByRestaurant()))
+                .collect(Collectors.toList());
+
+        long ratedConfirmedVisits = confirmedIndividualVisits.stream()
+                .filter(visit -> visit.getRatingGiven() != null)
+                .count();
+
+        double averageObservedRating = ratings.stream()
+                .mapToInt(Rating::getRatingValue)
+                .average()
+                .orElse(0.0);
+
+        Map<String, Object> metrics = new LinkedHashMap<>();
+        metrics.put("engagementRate", percentage(ratedConfirmedVisits, confirmedIndividualVisits.size()));
+        metrics.put("ratingPredictionAccuracy", percentage(ratings.size(), Math.max(1, confirmedIndividualVisits.size())));
+        metrics.put("interactionCount", confirmedIndividualVisits.size() + ratings.size());
+        metrics.put("improvementTrend", deriveRecentActivityTrend(ratings));
+        metrics.put("metricMode", "observed");
+        metrics.put("averageObservedRating", Math.round(averageObservedRating * 10.0) / 10.0);
+        return metrics;
+    }
+
+    private double percentage(long numerator, long denominator) {
+        if (denominator <= 0) {
+            return 0.0;
+        }
+        return Math.round((numerator * 10000.0) / denominator) / 100.0;
+    }
+
+    private String deriveTrend(List<Double> olderScores, List<Double> recentScores) {
+        if (olderScores.isEmpty() || recentScores.isEmpty()) {
+            return "Not enough data";
+        }
+
+        double olderAverage = olderScores.stream().mapToDouble(Double::doubleValue).average().orElse(0.0);
+        double recentAverage = recentScores.stream().mapToDouble(Double::doubleValue).average().orElse(0.0);
+
+        if (recentAverage > olderAverage + 2.0) {
+            return "Increasing";
+        }
+        if (recentAverage < olderAverage - 2.0) {
+            return "Declining";
+        }
+        return "Stable";
+    }
+
+    private String deriveRecentActivityTrend(List<Rating> ratings) {
+        if (ratings.isEmpty()) {
+            return "Not enough data";
+        }
+
+        LocalDateTime now = LocalDateTime.now();
+        long recentWindow = ratings.stream()
+                .filter(rating -> rating.getCreatedAt() != null && ChronoUnit.DAYS.between(rating.getCreatedAt(), now) <= 30)
+                .count();
+        long previousWindow = ratings.stream()
+                .filter(rating -> rating.getCreatedAt() != null)
+                .filter(rating -> {
+                    long days = ChronoUnit.DAYS.between(rating.getCreatedAt(), now);
+                    return days > 30 && days <= 60;
+                })
+                .count();
+
+        if (recentWindow > previousWindow) {
+            return "Growing";
+        }
+        if (recentWindow < previousWindow) {
+            return "Cooling";
+        }
+        return "Stable";
     }
 }

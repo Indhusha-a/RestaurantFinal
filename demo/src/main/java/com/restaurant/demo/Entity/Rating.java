@@ -3,6 +3,8 @@ package com.restaurant.demo.Entity;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.time.LocalDateTime;
+
 @Entity
 @Table(
         name = "ratings",
@@ -31,4 +33,7 @@ public class Rating {
 
     @Column(nullable = false)
     private Integer ratingValue; // 1 to 5
+
+    @Builder.Default
+    private LocalDateTime createdAt = LocalDateTime.now();
 }

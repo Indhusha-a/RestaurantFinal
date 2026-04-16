@@ -111,6 +111,16 @@ export default function AdminLayout({ children }) {
             </span>
             User Management
           </NavLink>
+
+          <NavLink
+            to="/admin/monitoring"
+            className={({ isActive }) => `admin-link ${isActive ? "active" : ""}`}
+          >
+            <span className="admin-link-icon">
+              <LayoutDashboard size={18} />
+            </span>
+            System Monitoring
+          </NavLink>
         </nav>
 
         {/* Admin logout — clears session and redirects to home */}

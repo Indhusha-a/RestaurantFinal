@@ -64,8 +64,6 @@ public class GroupService {
     private final RestaurantRepository restaurantRepository;
     private final TagRepository tagRepository;
 
-    
-
     public Group createGroup(CreateGroupRequest request) {
         User creator = userRepository.findById(request.getCreatedByUserId())
                 .orElseThrow(() -> new RuntimeException("Creator user not found"));
@@ -402,6 +400,8 @@ public class GroupService {
             response.put("totalVotes", votes.size());
             response.put("likeCounts", likeCounts);
             response.put("winningRestaurantId", winnerRestaurantId);
+            response.put("restaurantConfirmed", session.getRestaurantConfirmed());
+            response.put("leaderConfirmed", session.getLeaderConfirmed());
 
             if (session.getWinningRestaurant() != null) {
                 response.put("winningRestaurantName", session.getWinningRestaurant().getName());
@@ -580,5 +580,112 @@ public class GroupService {
         }
 
         return response;
+    }
+
+    // ==================== LEADERBOARD ====================
+
+    // Fetch top 10 groups ranked by points for weekly display
+    public List<Map<String, Object>> getGroupLeaderboard() {
+        List<Group> topGroups = groupRepository.findTop10ByIsActiveTrueOrderByPointsDesc();
+        List<Map<String, Object>> leaderboard = new ArrayList<>();
+        
+        for (int i = 0; i < topGroups.size(); i++) {
+            Group group = topGroups.get(i);
+            Map<String, Object> item = new HashMap<>();
+            item.put("rank", i + 1);
+            item.put("groupId", group.getId());
+            item.put("groupName", group.getGroupName());
+            item.put("points", group.getPoints());
+            item.put("memberCount", groupMemberRepository.findByGroupId(group.getId()).size());
+            leaderboard.add(item);
+        }
+        
+        return leaderboard;
+    }
+
+    // Get specific group's rank and details on the leaderboard
+    public Map<String, Object> getGroupLeaderboardPosition(Long groupId) {
+        Group group = groupRepository.findById(groupId)
+                .orElseThrow(() -> new RuntimeException("Group not found"));
+        
+        List<Group> aboveGroups = groupRepository.findTop10ByIsActiveTrueOrderByPointsDesc().stream()
+                .filter(g -> g.getId().equals(groupId))
+                .collect(Collectors.toList());
+        
+        int rank = 1;
+        List<Group> allGroups = groupRepository.findTop10ByIsActiveTrueOrderByPointsDesc();
+        for (int i = 0; i < allGroups.size(); i++) {
+            if (allGroups.get(i).getId().equals(groupId)) {
+                rank = i + 1;
+                break;
+            }
+        }
+        
+        Map<String, Object> result = new HashMap<>();
+        result.put("groupId", group.getId());
+        result.put("groupName", group.getGroupName());
+        result.put("points", group.getPoints());
+        result.put("rank", rank);
+        result.put("isInTopTen", rank <= 10);
+        result.put("memberCount", groupMemberRepository.findByGroupId(groupId).size());
+        
+        return result;
+    }
+
+    // Group leader confirms the visitation, triggering points award to both group and restaurant
+    public Map<String, Object> confirmGroupVisitation(Long groupId, Long sessionId) {
+        GroupSession session = groupSessionRepository.findById(sessionId)
+                .orElseThrow(() -> new RuntimeException("Session not found"));
+
+        if (!session.getGroup().getId().equals(groupId)) {
+            throw new RuntimeException("This session does not belong to your group");
+        }
+
+        if (!session.getRestaurantConfirmed()) {
+            throw new RuntimeException("Restaurant has not yet confirmed the visit");
+        }
+
+        if (Boolean.TRUE.equals(session.getLeaderConfirmed())) {
+            int memberCount = groupMemberRepository.findByGroupId(groupId).size();
+            return Map.of(
+                    "message", "This group visit has already been confirmed.",
+                    "groupPoints", session.getGroup().getPoints(),
+                    "restaurantPoints", session.getWinningRestaurant().getPoints(),
+                    "pointsAwarded", memberCount
+            );
+        }
+
+        session.setLeaderConfirmed(true);
+        groupSessionRepository.save(session);
+
+        // Award points: count = number of group members
+        Group group = session.getGroup();
+        int memberCount = groupMemberRepository.findByGroupId(groupId).size();
+        
+        group.setPoints(group.getPoints() + memberCount);
+        groupRepository.save(group);
+
+        // Award same points to the restaurant
+        Restaurant restaurant = session.getWinningRestaurant();
+        restaurant.setPoints(restaurant.getPoints() + memberCount);
+        restaurantRepository.save(restaurant);
+
+        return Map.of(
+                "message", "Group visitation confirmed. Points awarded!",
+                "groupPoints", group.getPoints(),
+                "restaurantPoints", restaurant.getPoints(),
+                "pointsAwarded", memberCount
+        );
+    }
+
+    // Reset all group points for a new week (called by scheduler)
+    public void resetWeeklyGroupPoints() {
+        List<Group> allGroups = groupRepository.findAll();
+        LocalDateTime now = LocalDateTime.now();
+        for (Group group : allGroups) {
+            group.setPoints(0);
+            group.setPointsResetDate(now);
+        }
+        groupRepository.saveAll(allGroups);
     }
 }

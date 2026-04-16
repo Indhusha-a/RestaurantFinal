@@ -170,6 +170,15 @@ export const userAPI = {
       throw error.response?.data || { message: "Failed to fetch notifications" };
     }
   },
+
+  markNotificationsAsRead: async () => {
+    try {
+      const response = await api.put("/users/notifications/mark-read");
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: "Failed to mark notifications as read" };
+    }
+  },
 };
 
 export const restaurantAPI = {
@@ -271,6 +280,23 @@ export const restaurantAPI = {
         error.response?.data?.message ||
           error.message ||
           "Failed to confirm visit"
+      );
+    }
+  },
+
+  confirmGroupSession: async (sessionId) => {
+    try {
+      const response = await api.post(
+        `/restaurants/sessions/${sessionId}/confirm`,
+        {},
+        { headers: getRestaurantAuthHeaders() }
+      );
+      return response.data;
+    } catch (error) {
+      throw new Error(
+        error.response?.data?.message ||
+          error.message ||
+          "Failed to confirm group visit"
       );
     }
   },
@@ -607,12 +633,23 @@ export const groupAPI = {
       };
     }
   },
+
+  confirmGroupVisitation: async (groupId, sessionId) => {
+    try {
+      const response = await api.post(`/groups/${groupId}/session/${sessionId}/confirm`);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || {
+        message: "Failed to confirm group visitation",
+      };
+    }
+  },
 };
 
 export const leaderboardAPI = {
   getLeaderboard: async () => {
     try {
-      const response = await api.get("/leaderboard");
+      const response = await api.get("/leaderboard/groups");
       return response.data;
     } catch (error) {
       throw error.response?.data || { message: "Failed to fetch leaderboard" };
@@ -678,7 +715,7 @@ export const adminAPI = {
 
   getDeletionRequests: async () => {
     try {
-      const response = await api.get("/admin/deletion-requests");
+      const response = await api.get("/admin/users/deletion-requests");
       return response.data;
     } catch (error) {
       throw error.response?.data || {

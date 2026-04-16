@@ -108,6 +108,17 @@ public class GroupController {
 
 
 
+        @PostMapping("/{groupId}/session/{sessionId}/confirm")
+        public ResponseEntity<?> confirmGroupVisitation(
+                @PathVariable Long groupId,
+                @PathVariable Long sessionId
+        ) {
+            try {
+                return ResponseEntity.ok(groupService.confirmGroupVisitation(groupId, sessionId));
+            } catch (RuntimeException e) {
+                return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
+            }
+        }
     @GetMapping("/session/{sessionId}/topsis")
         public ResponseEntity<TopsisResponseDto> generateTopsisRecommendations(@PathVariable Long sessionId) {
         return ResponseEntity.ok(groupService.generateTopsisRecommendations(sessionId));

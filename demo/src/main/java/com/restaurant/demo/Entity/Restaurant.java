@@ -78,6 +78,9 @@ private String imageUrl;
 
     private LocalDateTime approvedAt;
 
+    @Builder.Default
+    private LocalDateTime pointsResetDate = LocalDateTime.now();
+
    //Relationships
 
     @ManyToMany

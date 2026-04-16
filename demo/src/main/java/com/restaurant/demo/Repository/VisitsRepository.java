@@ -14,4 +14,6 @@ public interface VisitsRepository extends JpaRepository<Visits, Long> {
     List<Visits> findByRestaurantIdOrderByVisitDateDesc(Long restaurantId);
 
     List<Visits> findByRestaurantIdAndModeOrderByVisitDateDesc(Long restaurantId, String mode);
+
+    List<Visits> findByUserUserIdAndRestaurantIdAndConfirmedByRestaurantTrue(Long userId, Long restaurantId);
 }

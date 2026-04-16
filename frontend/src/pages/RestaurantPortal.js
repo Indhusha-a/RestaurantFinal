@@ -186,6 +186,21 @@ export default function RestaurantPortal() {
     }
   };
 
+  const handleConfirmGroupSession = async (sessionId) => {
+    setConfirmingVisitId(sessionId);
+    setError("");
+    setSuccessMessage("");
+    try {
+      await restaurantAPI.confirmGroupSession(sessionId);
+      await loadAll();
+      setSuccessMessage("Group visit confirmation sent to the group leader.");
+    } catch (err) {
+      setError(err.message || "Failed to confirm group visit");
+    } finally {
+      setConfirmingVisitId(null);
+    }
+  };
+
   const handleBoostRequest = async () => {
     setBoosting(true);
     setError("");
@@ -420,11 +435,14 @@ export default function RestaurantPortal() {
                   {(activities.groupRequests || []).map((item) => (
                     <div key={item.visitId} className="rounded-3xl border border-slate-200 bg-gradient-to-br from-white to-pink-50/60 p-5">
                       <div className="flex items-start justify-between gap-3">
-                        <div><p className="font-semibold text-slate-900">@{item.username}</p><p className="text-sm text-slate-500">{item.firstName} {item.lastName}</p></div>
-                        <span className={`rounded-full px-3 py-1 text-xs font-semibold ${item.confirmedByRestaurant ? "bg-emerald-100 text-emerald-700" : "bg-pink-100 text-pink-700"}`}>{item.confirmedByRestaurant ? "Confirmed" : "Need group confirmation"}</span>
+                        <div>
+                          <p className="font-semibold text-slate-900">{item.groupName || "Group session"}</p>
+                          <p className="text-sm text-slate-500">Leader: @{item.username} · {item.firstName} {item.lastName}</p>
+                        </div>
+                        <span className={`rounded-full px-3 py-1 text-xs font-semibold ${item.confirmedByRestaurant ? "bg-emerald-100 text-emerald-700" : "bg-pink-100 text-pink-700"}`}>{item.confirmedByRestaurant ? "Restaurant confirmed" : "Awaiting restaurant confirmation"}</span>
                       </div>
                       <p className="mt-3 text-sm text-slate-500">Visit recorded: {formatDate(item.visitDate)}</p>
-                      {!item.confirmedByRestaurant && <button type="button" onClick={() => handleConfirmVisit(item.visitId)} disabled={confirmingVisitId === item.visitId} className="mt-4 rounded-xl bg-pink-500 px-4 py-2 text-sm font-semibold text-white disabled:opacity-60">{confirmingVisitId === item.visitId ? "Confirming..." : "Confirm Group Visit"}</button>}
+                      {!item.confirmedByRestaurant && <button type="button" onClick={() => handleConfirmGroupSession(item.sessionId || item.visitId)} disabled={confirmingVisitId === (item.sessionId || item.visitId)} className="mt-4 rounded-xl bg-pink-500 px-4 py-2 text-sm font-semibold text-white disabled:opacity-60">{confirmingVisitId === (item.sessionId || item.visitId) ? "Confirming..." : "Confirm Group Visit"}</button>}
                     </div>
                   ))}
                 </div>

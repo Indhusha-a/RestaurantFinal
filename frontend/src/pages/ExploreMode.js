@@ -8,6 +8,7 @@ export default function ExploreMode() {
   const navigate = useNavigate();
   const [restaurants, setRestaurants] = useState([]);
   const [topWeeklyRestaurants, setTopWeeklyRestaurants] = useState([]);
+  const [newRestaurants, setNewRestaurants] = useState([]);
   const [allRestaurants, setAllRestaurants] = useState([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(true);
@@ -27,9 +28,10 @@ export default function ExploreMode() {
       setLoading(true);
       setError("");
 
-      const [recommendationData, topWeeklyData, allRestaurantData] = await Promise.all([
+      const [recommendationData, topWeeklyData, newRestaurantsData, allRestaurantData] = await Promise.all([
         API.cf.getRecommendations(),
         API.restaurant.getTopWeeklyRestaurants(),
+        API.explore.getNewRestaurants(),
         API.restaurant.getAllRestaurants()
       ]);
 
@@ -43,6 +45,12 @@ export default function ExploreMode() {
         setTopWeeklyRestaurants(topWeeklyData);
       } else {
         setTopWeeklyRestaurants([]);
+      }
+
+      if (Array.isArray(newRestaurantsData)) {
+        setNewRestaurants(newRestaurantsData.slice(0, 8));
+      } else {
+        setNewRestaurants([]);
       }
 
       if (Array.isArray(allRestaurantData)) {
@@ -267,7 +275,7 @@ export default function ExploreMode() {
         </div>
       )}
 
-      {!loading && !showSearchResults && (topWeeklyRestaurants.length > 0 || restaurants.length > 0) && (
+      {!loading && !showSearchResults && (topWeeklyRestaurants.length > 0 || restaurants.length > 0 || newRestaurants.length > 0) && (
         <div className="grid items-start gap-8 xl:grid-cols-[360px_minmax(0,1fr)]">
           <aside className="xl:sticky xl:top-6">
             <div className="overflow-hidden rounded-[2rem] border border-border/60 bg-card shadow-sm">
@@ -331,6 +339,81 @@ export default function ExploreMode() {
           </aside>
 
           <section>
+            {newRestaurants.length > 0 && (
+              <div className="mb-10">
+                <div className="mb-6 flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
+                  <div>
+                    <p className="text-sm uppercase tracking-[0.2em] text-muted-foreground">Fresh Picks</p>
+                    <h2 className="text-2xl font-semibold">Newly added restaurants</h2>
+                  </div>
+                  <span className="text-sm text-muted-foreground">
+                    {newRestaurants.length} newest approved spots
+                  </span>
+                </div>
+
+                <div className="grid gap-6 lg:grid-cols-2">
+                  {newRestaurants.map((restaurant, index) => (
+                    <motion.div
+                      key={restaurant.restaurantId ?? restaurant.id ?? index}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: index * 0.08 }}
+                      className="group overflow-hidden rounded-[2rem] border border-border/60 bg-card shadow-sm transition-all hover:-translate-y-1 hover:shadow-xl"
+                    >
+                      <div className="relative h-56 overflow-hidden">
+                        <img
+                          src={
+                            restaurant.image1Path ||
+                            "https://images.unsplash.com/photo-1604382354936-07c5d9983bd3"
+                          }
+                          alt={restaurant.name}
+                          className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                        />
+                        <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-black/45 to-transparent" />
+                        <div className="absolute left-4 top-4 rounded-full bg-background/90 px-3 py-1 text-xs font-medium text-foreground shadow-sm">
+                          New
+                        </div>
+                      </div>
+
+                      <div className="p-6">
+                        <div className="mb-3 flex items-start justify-between gap-3">
+                          <h3 className="text-xl font-bold">{restaurant.name}</h3>
+                          <span className="rounded-full bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
+                            {restaurant.budgetRange || "Flexible"}
+                          </span>
+                        </div>
+
+                        <p className="mb-5 text-sm leading-6 text-muted-foreground">
+                          {restaurant.description}
+                        </p>
+
+                        <div className="grid gap-3 text-sm text-muted-foreground md:grid-cols-2">
+                          <span className="flex items-center gap-2 rounded-2xl bg-background px-3 py-2">
+                            <MapPin className="w-4 h-4" />
+                            {restaurant.address || "Colombo"}
+                          </span>
+                          <span className="flex items-center gap-2 rounded-2xl bg-background px-3 py-2">
+                            <Phone className="w-4 h-4" />
+                            {restaurant.phone || "N/A"}
+                          </span>
+                        </div>
+
+                        <motion.button
+                          whileHover={{ scale: 1.01 }}
+                          whileTap={{ scale: 0.99 }}
+                          onClick={() => handleSelectRestaurant(restaurant)}
+                          className="mt-5 w-full rounded-2xl bg-gradient-to-r from-orange-500 to-pink-500 px-4 py-3 text-sm font-medium text-white transition-all hover:shadow-lg flex items-center justify-center gap-2"
+                        >
+                          <Navigation className="w-4 h-4" />
+                          Select Restaurant
+                        </motion.button>
+                      </div>
+                    </motion.div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {restaurants.length > 0 && (
               <>
                 <div className="mb-6 flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
