@@ -52,6 +52,8 @@ public class AdminController {
     public ResponseEntity<?> addRestaurant(
             @RequestParam("name") String name,
             @RequestParam("description") String description,
+            @RequestParam("email") String email,
+            @RequestParam("password") String password,
             @RequestParam("phone") String phone,
             @RequestParam("address") String address,
             @RequestParam("locationLink") String locationLink,
@@ -62,6 +64,8 @@ public class AdminController {
             AdminRestaurantRequest request = new AdminRestaurantRequest();
             request.setName(name);
             request.setDescription(description);
+            request.setEmail(email);
+            request.setPassword(password);
             request.setPhone(phone);
             request.setAddress(address);
             request.setLocationLink(locationLink);

@@ -1,25 +1,27 @@
-import { useState, useEffect } from "react";
-import "../../../styles/admin.css";
+import { useEffect, useState } from "react";
 import { NavLink } from "react-router-dom";
 import {
   Bell,
-  LayoutDashboard,
-  Users,
-  PlusCircle,
   ClipboardCheck,
+  LayoutDashboard,
   List,
-  LogOut
+  LogOut,
+  PlusCircle,
+  Users,
+  X,
 } from "lucide-react";
+import "../../../styles/admin.css";
 
 export default function AdminLayout({ children }) {
   const [notifications, setNotifications] = useState(0);
+  const [showNotificationPanel, setShowNotificationPanel] = useState(false);
+  const [pendingRestaurants, setPendingRestaurants] = useState([]);
+  const [deletionRequests, setDeletionRequests] = useState([]);
 
-  // Load notification count once
   useEffect(() => {
     fetchNotifications();
   }, []);
 
-  // Count pending restaurants + deletion requests
   const fetchNotifications = async () => {
     try {
       const [pendingRes, deletionRes] = await Promise.all([
@@ -30,19 +32,19 @@ export default function AdminLayout({ children }) {
       const pending = await pendingRes.json();
       const deletion = await deletionRes.json();
 
-      const count =
-        (Array.isArray(pending) ? pending.length : 0) +
-        (Array.isArray(deletion) ? deletion.length : 0);
+      const pendingItems = Array.isArray(pending) ? pending : [];
+      const deletionItems = Array.isArray(deletion) ? deletion : [];
 
-      setNotifications(count);
-    } catch (err) {
-      console.error("Notification error:", err);
+      setPendingRestaurants(pendingItems.slice(0, 5));
+      setDeletionRequests(deletionItems.slice(0, 5));
+      setNotifications(pendingItems.length + deletionItems.length);
+    } catch (error) {
+      console.error("Notification error:", error);
     }
   };
 
   return (
     <div className="admin-shell">
-      {/* Sidebar */}
       <aside className="admin-sidebar">
         <div className="admin-brand">
           <div className="admin-brand-logo" />
@@ -54,7 +56,6 @@ export default function AdminLayout({ children }) {
           </div>
         </div>
 
-        {/* Dashboard section */}
         <div className="admin-section-title">Home</div>
         <nav className="admin-nav">
           <NavLink
@@ -69,7 +70,6 @@ export default function AdminLayout({ children }) {
           </NavLink>
         </nav>
 
-        {/* Main admin section */}
         <div className="admin-section-title">Admin</div>
         <nav className="admin-nav">
           <NavLink
@@ -123,11 +123,16 @@ export default function AdminLayout({ children }) {
           </NavLink>
         </nav>
 
-        {/* Admin logout — clears session and redirects to home */}
         <div style={{ marginTop: "auto", padding: "16px" }}>
           <button
             className="admin-link"
-            style={{ width: "100%", background: "none", border: "none", cursor: "pointer", color: "#ef4444" }}
+            style={{
+              width: "100%",
+              background: "none",
+              border: "none",
+              cursor: "pointer",
+              color: "#ef4444",
+            }}
             onClick={() => {
               localStorage.removeItem("token");
               localStorage.removeItem("user");
@@ -142,21 +147,19 @@ export default function AdminLayout({ children }) {
         </div>
       </aside>
 
-      {/* Content */}
       <main className="admin-content">
-        {/* Topbar */}
-        <div className="admin-topbar">
+        <div className="admin-topbar" style={{ position: "relative" }}>
           <div className="admin-top-actions">
-            {/* Notifications */}
             <button
               className="admin-icon-btn"
               title="Notifications"
               style={{ position: "relative" }}
-              onClick={() => window.location.href = "/admin/restaurants"}
+              onClick={() => {
+                fetchNotifications();
+                setShowNotificationPanel((current) => !current);
+              }}
             >
               <Bell size={18} />
-
-              {/* Small badge */}
               {notifications > 0 && (
                 <span
                   style={{
@@ -168,7 +171,7 @@ export default function AdminLayout({ children }) {
                     fontSize: "10px",
                     borderRadius: "50%",
                     padding: "2px 6px",
-                    fontWeight: "bold"
+                    fontWeight: "bold",
                   }}
                 >
                   {notifications}
@@ -176,7 +179,126 @@ export default function AdminLayout({ children }) {
               )}
             </button>
 
-            {/* Open user side */}
+            {showNotificationPanel && (
+              <div
+                style={{
+                  position: "absolute",
+                  top: 64,
+                  right: 24,
+                  width: 320,
+                  background: "white",
+                  border: "1px solid #e5e7eb",
+                  borderRadius: 20,
+                  boxShadow: "0 20px 50px rgba(15, 23, 42, 0.15)",
+                  padding: 16,
+                  zIndex: 50,
+                }}
+              >
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    marginBottom: 12,
+                  }}
+                >
+                  <div>
+                    <div style={{ fontWeight: 700, color: "#111827" }}>
+                      Admin Notifications
+                    </div>
+                    <div style={{ fontSize: 12, color: "#6b7280" }}>
+                      Pending approvals and deletion requests
+                    </div>
+                  </div>
+                  <button
+                    className="admin-icon-btn"
+                    style={{ width: 32, height: 32 }}
+                    onClick={() => setShowNotificationPanel(false)}
+                  >
+                    <X size={14} />
+                  </button>
+                </div>
+
+                <div style={{ display: "grid", gap: 12 }}>
+                  <div
+                    style={{
+                      border: "1px solid #f3f4f6",
+                      borderRadius: 16,
+                      padding: 12,
+                    }}
+                  >
+                    <div
+                      style={{
+                        fontSize: 12,
+                        textTransform: "uppercase",
+                        letterSpacing: "0.12em",
+                        color: "#f97316",
+                        marginBottom: 8,
+                      }}
+                    >
+                      Pending Restaurants
+                    </div>
+                    {pendingRestaurants.length === 0 ? (
+                      <div style={{ fontSize: 13, color: "#6b7280" }}>
+                        No pending restaurant approvals.
+                      </div>
+                    ) : (
+                      pendingRestaurants.map((restaurant) => (
+                        <div
+                          key={restaurant.id}
+                          style={{
+                            fontSize: 13,
+                            color: "#111827",
+                            marginBottom: 6,
+                          }}
+                        >
+                          {restaurant.name}
+                        </div>
+                      ))
+                    )}
+                  </div>
+
+                  <div
+                    style={{
+                      border: "1px solid #f3f4f6",
+                      borderRadius: 16,
+                      padding: 12,
+                    }}
+                  >
+                    <div
+                      style={{
+                        fontSize: 12,
+                        textTransform: "uppercase",
+                        letterSpacing: "0.12em",
+                        color: "#ec4899",
+                        marginBottom: 8,
+                      }}
+                    >
+                      Deletion Requests
+                    </div>
+                    {deletionRequests.length === 0 ? (
+                      <div style={{ fontSize: 13, color: "#6b7280" }}>
+                        No user deletion requests.
+                      </div>
+                    ) : (
+                      deletionRequests.map((user) => (
+                        <div
+                          key={user.userId}
+                          style={{
+                            fontSize: 13,
+                            color: "#111827",
+                            marginBottom: 6,
+                          }}
+                        >
+                          @{user.username}
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+
             <button
               className="primary-button"
               style={{ height: 40, padding: "0 16px" }}
@@ -185,17 +307,14 @@ export default function AdminLayout({ children }) {
               User View
             </button>
 
-            {/* Role badge */}
             <div className="admin-pill">Admin</div>
             <div style={{ fontSize: "14px", color: "#6b7280" }}>
-             <div style={{ fontSize: "14px", color: "#6b7280" }}>
-             📅 {new Date().toLocaleDateString()}
-              </div>
+              {new Date().toLocaleDateString()}
             </div>
           </div>
         </div>
 
-         {children}
+        {children}
       </main>
     </div>
   );
