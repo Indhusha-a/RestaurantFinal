@@ -10,6 +10,8 @@ import org.springframework.web.multipart.MultipartFile;
 public class AdminRestaurantRequest {
     private String name;
     private String description;
+    private String email;
+    private String password;
     private String phone;
     private String address;
     private String locationLink;

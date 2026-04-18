@@ -1,12 +1,6 @@
 import { useMemo, useState } from "react";
-import AdminLayout from "../../components/layout/admin/AdminLayout"; 
-// If this import gives an error, use:
-// import AdminLayout from "../../components/layout/admin/AdminLayout";
+import AdminLayout from "../../components/layout/admin/AdminLayout";
 
-/*
-  Budget options mapped to backend enum values.
-  Keep these values exactly as your backend expects.
-*/
 const BUDGET_OPTIONS = [
   { label: "LKR 0 - 1000", value: "ZERO_TO_1000" },
   { label: "LKR 1000 - 2000", value: "ONE_TO_2000" },
@@ -15,12 +9,10 @@ const BUDGET_OPTIONS = [
 ];
 
 export default function AddRestaurant() {
-  /*
-    Main form state.
-    image stores the actual uploaded file object.
-  */
   const [form, setForm] = useState({
     restaurantName: "",
+    email: "",
+    password: "",
     address: "",
     restaurantPhone: "",
     budgetRange: "ONE_TO_2000",
@@ -28,36 +20,23 @@ export default function AddRestaurant() {
     image: null,
     location: "",
   });
-
-  /* Validation errors for each field */
   const [errors, setErrors] = useState({});
-
-  /* Small toast message shown after submit / clear / error */
   const [toast, setToast] = useState("");
 
-  /*
-    Live preview data.
-    If user uploads an image, show it.
-    Otherwise show a default placeholder image.
-  */
-  const preview = useMemo(() => {
-    return {
+  const preview = useMemo(
+    () => ({
       ...form,
       imagePreview: form.image
         ? URL.createObjectURL(form.image)
         : "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=1200&q=80",
-    };
-  }, [form]);
+    }),
+    [form]
+  );
 
-  /* Reusable helper to update a single field */
   const setField = (key, value) => {
-    setForm((prev) => ({ ...prev, [key]: value }));
+    setForm((current) => ({ ...current, [key]: value }));
   };
 
-  /*
-    Validate all fields before sending to backend.
-    Phone must contain only numbers and be exactly 10 digits.
-  */
   const validate = () => {
     const next = {};
 
@@ -67,6 +46,20 @@ export default function AddRestaurant() {
 
     if (!form.address.trim()) {
       next.address = "Address is required";
+    }
+
+    if (!form.email.trim()) {
+      next.email = "Email is required";
+    } else if (!form.email.includes("@")) {
+      next.email = "Email must contain @";
+    }
+
+    if (!form.password.trim()) {
+      next.password = "Password is required";
+    } else if (!/[A-Z]/.test(form.password)) {
+      next.password = "Password must contain at least one capital letter";
+    } else if (!/[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]/.test(form.password)) {
+      next.password = "Password must contain at least one special character";
     }
 
     if (!form.restaurantPhone.trim()) {
@@ -91,16 +84,16 @@ export default function AddRestaurant() {
     return Object.keys(next).length === 0;
   };
 
-  /* Show toast for a short time */
-  const showToast = (msg) => {
-    setToast(msg);
+  const showToast = (message) => {
+    setToast(message);
     setTimeout(() => setToast(""), 2500);
   };
 
-  /* Reset form fields */
   const clearForm = () => {
     setForm({
       restaurantName: "",
+      email: "",
+      password: "",
       address: "",
       restaurantPhone: "",
       budgetRange: "ONE_TO_2000",
@@ -111,25 +104,18 @@ export default function AddRestaurant() {
     setErrors({});
   };
 
-  /*
-    Submit form to backend.
-    Because image is a file, we must use FormData.
-    Do NOT use JSON here.
-  */
-  const onSubmit = async (e) => {
-    e.preventDefault();
+  const onSubmit = async (event) => {
+    event.preventDefault();
 
-    if (!validate()) return;
+    if (!validate()) {
+      return;
+    }
 
     try {
       const formData = new FormData();
-
-      /*
-        These field names must match your backend parameter names.
-        Example backend names:
-        name, address, phone, budgetRange, description, locationLink, image
-      */
       formData.append("name", form.restaurantName);
+      formData.append("email", form.email);
+      formData.append("password", form.password);
       formData.append("address", form.address);
       formData.append("phone", form.restaurantPhone);
       formData.append("budgetRange", form.budgetRange);
@@ -145,24 +131,21 @@ export default function AddRestaurant() {
         body: formData,
       });
 
+      const payload = await response.json().catch(() => null);
       if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(errorText || "Failed to add restaurant");
+        throw new Error(payload?.message || "Failed to add restaurant");
       }
 
-      await response.json();
-
-      showToast("✅ Restaurant added successfully!");
+      showToast("Restaurant added successfully.");
       clearForm();
-    } catch (err) {
-      console.error("Error adding restaurant:", err);
-      showToast(`❌ Error: ${err.message}`);
+    } catch (error) {
+      console.error("Error adding restaurant:", error);
+      showToast(`Error: ${error.message}`);
     }
   };
 
   return (
     <AdminLayout>
-      {/* Page Header */}
       <div className="bg-white border border-gray-100 shadow-sm rounded-2xl p-6">
         <h1 className="text-2xl md:text-3xl font-extrabold text-gray-900">
           Add Restaurant{" "}
@@ -175,9 +158,7 @@ export default function AddRestaurant() {
         </p>
       </div>
 
-      {/* Main 2-column layout */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 mt-5">
-        {/* Left side - form */}
         <div className="bg-white border border-gray-100 shadow-sm rounded-2xl p-6">
           <h2 className="text-xl font-bold text-gray-900">Restaurant Details</h2>
           <p className="text-sm text-gray-500 mt-1">
@@ -185,7 +166,6 @@ export default function AddRestaurant() {
           </p>
 
           <form onSubmit={onSubmit} className="mt-5 grid gap-4">
-            {/* Restaurant Name */}
             <div>
               <label className="block text-sm font-medium text-gray-700">
                 Restaurant Name *
@@ -194,7 +174,7 @@ export default function AddRestaurant() {
                 type="text"
                 className="mt-2 w-full rounded-xl border border-gray-200 px-4 py-3 text-sm"
                 value={form.restaurantName}
-                onChange={(e) => setField("restaurantName", e.target.value)}
+                onChange={(event) => setField("restaurantName", event.target.value)}
                 placeholder="e.g. Cafe Aroma"
               />
               {errors.restaurantName && (
@@ -204,7 +184,6 @@ export default function AddRestaurant() {
               )}
             </div>
 
-            {/* Address */}
             <div>
               <label className="block text-sm font-medium text-gray-700">
                 Address *
@@ -213,7 +192,7 @@ export default function AddRestaurant() {
                 type="text"
                 className="mt-2 w-full rounded-xl border border-gray-200 px-4 py-3 text-sm"
                 value={form.address}
-                onChange={(e) => setField("address", e.target.value)}
+                onChange={(event) => setField("address", event.target.value)}
                 placeholder="e.g. Colombo 07"
               />
               {errors.address && (
@@ -221,7 +200,38 @@ export default function AddRestaurant() {
               )}
             </div>
 
-            {/* Phone Number */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700">
+                Restaurant Email *
+              </label>
+              <input
+                type="email"
+                className="mt-2 w-full rounded-xl border border-gray-200 px-4 py-3 text-sm"
+                value={form.email}
+                onChange={(event) => setField("email", event.target.value)}
+                placeholder="e.g. cafeibson@iamhungry.com"
+              />
+              {errors.email && (
+                <p className="text-red-600 text-sm mt-2">{errors.email}</p>
+              )}
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700">
+                Restaurant Password *
+              </label>
+              <input
+                type="text"
+                className="mt-2 w-full rounded-xl border border-gray-200 px-4 py-3 text-sm"
+                value={form.password}
+                onChange={(event) => setField("password", event.target.value)}
+                placeholder="e.g. Cafe@123"
+              />
+              {errors.password && (
+                <p className="text-red-600 text-sm mt-2">{errors.password}</p>
+              )}
+            </div>
+
             <div>
               <label className="block text-sm font-medium text-gray-700">
                 Restaurant Phone *
@@ -231,12 +241,8 @@ export default function AddRestaurant() {
                 maxLength={10}
                 className="mt-2 w-full rounded-xl border border-gray-200 px-4 py-3 text-sm"
                 value={form.restaurantPhone}
-                onChange={(e) => {
-                  /*
-                    Keep only digits.
-                    This removes letters, spaces, and symbols automatically.
-                  */
-                  const value = e.target.value.replace(/\D/g, "");
+                onChange={(event) => {
+                  const value = event.target.value.replace(/\D/g, "");
                   setField("restaurantPhone", value);
                 }}
                 placeholder="0771234567"
@@ -248,7 +254,6 @@ export default function AddRestaurant() {
               )}
             </div>
 
-            {/* Budget Range */}
             <div>
               <label className="block text-sm font-medium text-gray-700">
                 Budget Range *
@@ -256,7 +261,7 @@ export default function AddRestaurant() {
               <select
                 className="mt-2 w-full rounded-xl border border-gray-200 px-4 py-3 text-sm"
                 value={form.budgetRange}
-                onChange={(e) => setField("budgetRange", e.target.value)}
+                onChange={(event) => setField("budgetRange", event.target.value)}
               >
                 {BUDGET_OPTIONS.map((option) => (
                   <option key={option.value} value={option.value}>
@@ -266,7 +271,6 @@ export default function AddRestaurant() {
               </select>
             </div>
 
-            {/* Description */}
             <div>
               <label className="block text-sm font-medium text-gray-700">
                 Description *
@@ -275,7 +279,7 @@ export default function AddRestaurant() {
                 rows={4}
                 className="mt-2 w-full rounded-xl border border-gray-200 px-4 py-3 text-sm"
                 value={form.description}
-                onChange={(e) => setField("description", e.target.value)}
+                onChange={(event) => setField("description", event.target.value)}
                 placeholder="Write a short description about the restaurant"
               />
               {errors.description && (
@@ -285,7 +289,6 @@ export default function AddRestaurant() {
               )}
             </div>
 
-            {/* Image Upload */}
             <div>
               <label className="block text-sm font-medium text-gray-700">
                 Restaurant Photo *
@@ -294,8 +297,8 @@ export default function AddRestaurant() {
                 type="file"
                 accept="image/*"
                 className="mt-2 w-full rounded-xl border border-gray-200 px-4 py-3 text-sm"
-                onChange={(e) => {
-                  const file = e.target.files[0];
+                onChange={(event) => {
+                  const file = event.target.files[0];
                   setField("image", file || null);
                 }}
               />
@@ -304,7 +307,6 @@ export default function AddRestaurant() {
               )}
             </div>
 
-            {/* Location */}
             <div>
               <label className="block text-sm font-medium text-gray-700">
                 Location *
@@ -313,7 +315,7 @@ export default function AddRestaurant() {
                 type="text"
                 className="mt-2 w-full rounded-xl border border-gray-200 px-4 py-3 text-sm"
                 value={form.location}
-                onChange={(e) => setField("location", e.target.value)}
+                onChange={(event) => setField("location", event.target.value)}
                 placeholder="Google Maps link or location text"
               />
               {errors.location && (
@@ -321,7 +323,6 @@ export default function AddRestaurant() {
               )}
             </div>
 
-            {/* Action Buttons */}
             <div className="flex gap-3 pt-2">
               <button
                 type="submit"
@@ -335,7 +336,7 @@ export default function AddRestaurant() {
                 className="px-5 py-3 rounded-xl border border-gray-200 text-sm hover:bg-gray-50"
                 onClick={() => {
                   clearForm();
-                  showToast("🧹 Cleared form");
+                  showToast("Form cleared.");
                 }}
               >
                 Clear
@@ -344,7 +345,6 @@ export default function AddRestaurant() {
           </form>
         </div>
 
-        {/* Right side - live preview */}
         <div className="bg-white border border-gray-100 shadow-sm rounded-2xl p-6">
           <h2 className="text-xl font-bold text-gray-900">Live Preview</h2>
           <p className="text-sm text-gray-500">
@@ -368,9 +368,8 @@ export default function AddRestaurant() {
               </p>
 
               <p className="text-sm text-gray-500 mt-1">
-                {BUDGET_OPTIONS.find(
-                  (item) => item.value === preview.budgetRange
-                )?.label || "Budget Range"}
+                {BUDGET_OPTIONS.find((item) => item.value === preview.budgetRange)
+                  ?.label || "Budget Range"}
               </p>
 
               <p className="text-sm text-gray-500 mt-1">
@@ -390,7 +389,6 @@ export default function AddRestaurant() {
         </div>
       </div>
 
-      {/* Toast Message */}
       {toast && (
         <div className="fixed bottom-6 right-6 bg-gray-900 text-white px-4 py-3 rounded-xl shadow-lg text-sm">
           {toast}

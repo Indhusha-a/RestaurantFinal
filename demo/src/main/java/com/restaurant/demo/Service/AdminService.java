@@ -86,9 +86,13 @@ public class AdminService {
     public Restaurant addRestaurant(AdminRestaurantRequest request) {
         String savedImagePath = saveImage(request.getImage());
 
+        validateManualRestaurant(request);
+
         Restaurant restaurant = Restaurant.builder()
                 .name(request.getName())
                 .description(request.getDescription())
+                .email(request.getEmail().trim())
+                .password(request.getPassword())
                 .phone(request.getPhone())
                 .address(request.getAddress())
                 .locationLink(request.getLocationLink())
@@ -105,6 +109,27 @@ public class AdminService {
                 .build();
 
         return restaurantRepository.save(restaurant);
+    }
+
+    private void validateManualRestaurant(AdminRestaurantRequest request) {
+        if (request.getEmail() == null || !request.getEmail().contains("@")) {
+            throw new RuntimeException("Restaurant email must contain @ symbol");
+        }
+        if (restaurantRepository.existsByEmail(request.getEmail().trim())) {
+            throw new RuntimeException("A restaurant with this email already exists");
+        }
+        if (request.getPassword() == null || !request.getPassword().matches(".*[A-Z].*")) {
+            throw new RuntimeException("Password must contain at least one capital letter");
+        }
+        if (request.getPassword() == null || !request.getPassword().matches(".*[!@#$%^&*()_+\\-=\\[\\]{};':\"\\\\|,.<>/?].*")) {
+            throw new RuntimeException("Password must contain at least one special character");
+        }
+        if (request.getPhone() == null || !request.getPhone().matches("\\d{10}")) {
+            throw new RuntimeException("Phone number must be exactly 10 digits");
+        }
+        if (request.getLocationLink() == null || request.getLocationLink().isBlank()) {
+            throw new RuntimeException("Location link is required");
+        }
     }
 
     public List<Restaurant> getAllRestaurants() {
