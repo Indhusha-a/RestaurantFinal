@@ -1,5 +1,7 @@
 package com.restaurant.demo.Entity;
 
+
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.restaurant.demo.enums.BudgetRange;
 import jakarta.persistence.*;
 import lombok.*;
@@ -27,10 +29,19 @@ public class Restaurant {
     @Column(columnDefinition = "TEXT")
     private String description;
 
+    @Column(nullable = false, unique = true)
+    private String email;
+
+    @Column(nullable = false)
+    private String password;
+
     private String phone;
 
     @Column(columnDefinition = "TEXT")
     private String address;
+
+    @Column(name = "image_url")
+private String imageUrl;
 
     private String locationLink;
 
@@ -42,13 +53,33 @@ public class Restaurant {
     private String image1Path;
     private String image2Path;
 
+    // Approval workflow flags for restaurant registration status
+    @Builder.Default
     private Boolean isApproved = false;
+
+    @Builder.Default
     private Boolean isActive = true;
 
+    @Builder.Default
+    private Boolean isRejected = false;
+
+    // Tracks the registration approval state: PENDING, APPROVED, REJECTED
+    @Builder.Default
+    private String approvalStatus = "PENDING";
+
+    private String rejectionReason;
+
+    // Points earned when group users visit this restaurant (resets weekly)
+    @Builder.Default
     private Integer points = 0;
+
+    @Builder.Default
     private Boolean boostRequested = false;
 
     private LocalDateTime approvedAt;
+
+    @Builder.Default
+    private LocalDateTime pointsResetDate = LocalDateTime.now();
 
    //Relationships
 
@@ -58,7 +89,8 @@ public class Restaurant {
             joinColumns = @JoinColumn(name = "restaurant_id"),
             inverseJoinColumns = @JoinColumn(name = "tag_id")
     )
-    private Set<Tag> tags;
+    @JsonIgnore
+private Set<Tag> tags;
 
     @ManyToMany
     @JoinTable(
@@ -66,5 +98,6 @@ public class Restaurant {
             joinColumns = @JoinColumn(name = "restaurant_id"),
             inverseJoinColumns = @JoinColumn(name = "speciality_id")
     )
-    private Set<Speciality> specialities;
+    @JsonIgnore
+private Set<Speciality> specialities;
 }

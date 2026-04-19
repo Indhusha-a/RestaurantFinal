@@ -1,0 +1,57 @@
+
+> frontend@0.1.0 build
+> react-scripts build
+
+(node:13220) [DEP0176] DeprecationWarning: fs.F_OK is deprecated, use fs.constants.F_OK instead
+(Use `node --trace-deprecation ...` to show where the warning was created)
+Creating an optimized production build...
+Compiled with warnings.
+
+[eslint] 
+src\pages\GroupMode.js
+  Line 247:6:  React Hook useEffect has missing dependencies: 'loadGroups', 'loadInvitations', and 'loadTags'. Either include them or remove the dependency array  react-hooks/exhaustive-deps
+  Line 255:6:  React Hook useEffect has a missing dependency: 'loadMembers'. Either include it or remove the dependency array                                      react-hooks/exhaustive-deps
+
+src\pages\Index.js
+  Line 4:10:  'useEffect' is defined but never used  no-unused-vars
+  Line 4:21:  'useState' is defined but never used   no-unused-vars
+
+src\pages\IndividualMode.js
+  Line 4:25:   'Tag' is defined but never used                                                                                                      no-unused-vars
+  Line 102:6:  React Hook useEffect has missing dependencies: 'loadSpecialties' and 'loadTags'. Either include them or remove the dependency array  react-hooks/exhaustive-deps
+
+src\pages\Register.js
+  Line 4:23:    'User' is defined but never used               no-unused-vars
+  Line 4:29:    'Mail' is defined but never used               no-unused-vars
+  Line 4:35:    'Lock' is defined but never used               no-unused-vars
+  Line 4:41:    'Phone' is defined but never used              no-unused-vars
+  Line 4:48:    'Users' is defined but never used              no-unused-vars
+  Line 102:27:  Unnecessary escape character: \[               no-useless-escape
+  Line 120:13:  'response' is assigned a value but never used  no-unused-vars
+
+src\services\api.js
+  Line 682:9:  Expected an error object to be thrown  no-throw-literal
+  Line 687:9:  Expected an error object to be thrown  no-throw-literal
+
+Search for the keywords to learn more about each warning.
+To ignore, add // eslint-disable-next-line to the line before.
+
+File sizes after gzip:
+
+  283.53 kB  build\static\js\main.bac8fdb9.js
+  10.68 kB   build\static\css\main.f467a324.css
+  1.76 kB    build\static\js\453.03346f77.chunk.js
+
+The project was built assuming it is hosted at /.
+You can control this with the homepage field in your package.json.
+
+The build folder is ready to be deployed.
+You may serve it with a static server:
+
+  npm install -g serve
+  serve -s build
+
+Find out more about deployment here:
+
+  https://cra.link/deployment
+

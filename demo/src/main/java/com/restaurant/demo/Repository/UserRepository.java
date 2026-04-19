@@ -1,10 +1,11 @@
 package com.restaurant.demo.Repository;
 
-import com.restaurant.demo.Entity.User;
-import org.springframework.data.jpa.repository.JpaRepository;
-
 import java.util.List;
 import java.util.Optional;
+
+import org.springframework.data.jpa.repository.JpaRepository;
+
+import com.restaurant.demo.Entity.User;
 
 public interface UserRepository extends JpaRepository<User, Long> {
 
@@ -23,4 +24,12 @@ public interface UserRepository extends JpaRepository<User, Long> {
     List<User> findByIsActiveTrue();
 
     List<User> findByDeletionRequestedTrue();
+
+
+
+    
 }
+
+
+
+

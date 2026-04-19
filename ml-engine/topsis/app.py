@@ -31,7 +31,7 @@ CORS(app, origins=["http://localhost:3000", "http://localhost:8080"])
 calculator = TopsisCalculator()
 
 
-# ==================== HEALTH CHECK ====================
+#  HEALTH CHECK 
 
 @app.route('/health', methods=['GET'])
 def health_check():
@@ -43,8 +43,7 @@ def health_check():
     })
 
 
-# ==================== TOPSIS CALCULATION ====================
-
+# TOPSIS CALCULATION
 @app.route('/api/topsis/calculate', methods=['POST'])
 def calculate_topsis():
     """
@@ -160,7 +159,7 @@ def calculate_topsis():
         return jsonify({'error': 'Internal server error'}), 500
 
 
-# ==================== DEBUG / TEST ENDPOINT ====================
+#  DEBUG / TEST ENDPOINT 
 
 @app.route('/api/topsis/debug', methods=['POST'])
 def debug_topsis():
