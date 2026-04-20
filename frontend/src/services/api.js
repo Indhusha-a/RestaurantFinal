@@ -133,13 +133,8 @@ export const userAPI = {
 
   updateProfile: async (profileData) => {
     try {
-<<<<<<< HEAD
-      const response = await api.put('/users/profile', profileData);
-      const updatedUser = response.data.data || response.data.user;
-=======
       const response = await api.put("/users/profile", profileData);
       const updatedUser = response.data;
->>>>>>> main
       if (updatedUser) {
         localStorage.setItem("user", JSON.stringify(updatedUser));
       }
@@ -187,11 +182,6 @@ export const userAPI = {
 };
 
 export const restaurantAPI = {
-<<<<<<< HEAD
-  getTags: async () => {
-    try {
-      const response = await api.get('/restaurants/tags');
-=======
   addRestaurant: async (payload) => {
     try {
       const response = await api.post("/restaurants/register", payload);
@@ -366,7 +356,6 @@ export const restaurantAPI = {
   getTags: async () => {
     try {
       const response = await api.get("/tags");
->>>>>>> main
       return response.data?.data || response.data;
     } catch (error) {
       try {
@@ -382,13 +371,8 @@ export const restaurantAPI = {
 
   getSpecialties: async () => {
     try {
-<<<<<<< HEAD
-      const response = await api.get('/restaurants/specialties');
-      return response.data?.data || response.data;
-=======
       const response = await api.get("/restaurants/specialties");
       return response.data;
->>>>>>> main
     } catch (error) {
       throw error.response?.data || { message: "Failed to fetch specialties" };
     }
@@ -405,13 +389,8 @@ export const restaurantAPI = {
 
   filterRestaurants: async (filterData) => {
     try {
-<<<<<<< HEAD
-      const response = await api.post('/restaurants/filter', filterData);
-      return response.data?.data || response.data;
-=======
       const response = await api.post("/restaurants/filter", filterData);
       return response.data;
->>>>>>> main
     } catch (error) {
       throw error.response?.data || { message: "Failed to filter restaurants" };
     }
@@ -780,7 +759,5 @@ const API = {
   cf: cfAPI,
   topsis: topsisApi,
 };
-
-
 
 export default API;
