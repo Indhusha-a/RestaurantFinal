@@ -516,6 +516,17 @@ export const groupAPI = {
     }
   },
 
+  getPendingLeaderConfirmations: async (userId) => {
+    try {
+      const response = await api.get(`/groups/leader-confirmations/${userId}`);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || {
+        message: "Failed to fetch leader confirmations",
+      };
+    }
+  },
+
   respondToInvitation: async (invitationId, action) => {
     try {
       const response = await api.post("/groups/invitation/respond", {

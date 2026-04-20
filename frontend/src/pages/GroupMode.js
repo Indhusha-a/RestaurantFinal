@@ -1,4 +1,4 @@
- import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import {
   Users,
@@ -127,6 +127,7 @@ export default function GroupMode() {
   const [tags, setTags] = useState([]);
   const [restaurants, setRestaurants] = useState([]);
   const [leaderboardPreview, setLeaderboardPreview] = useState([]);
+  const [pendingLeaderConfirmations, setPendingLeaderConfirmations] = useState([]);
   const [result, setResult] = useState(null);
   const [topsisResult, setTopsisResult] = useState(null);
   const [statusMessage, setStatusMessage] = useState("");
@@ -193,7 +194,7 @@ export default function GroupMode() {
   const showTopsisResults = topsisGenerated && topsisResult?.results;
   const showResultButton = recommendationVoted;
 
-  const loadGroups = async () => {
+  const loadGroups = useCallback(async () => {
     if (!currentUserId) return;
     try {
       const data = await groupAPI.getUserGroups(currentUserId);
@@ -201,9 +202,9 @@ export default function GroupMode() {
     } catch (error) {
       alert(getErrorMessage(error, "Failed to load groups"));
     }
-  };
+  }, [currentUserId]);
 
-  const loadInvitations = async () => {
+  const loadInvitations = useCallback(async () => {
     if (!currentUserId) return;
     try {
       const data = await groupAPI.getInvitations(currentUserId);
@@ -211,16 +212,16 @@ export default function GroupMode() {
     } catch (error) {
       alert(getErrorMessage(error, "Failed to load invitations"));
     }
-  };
+  }, [currentUserId]);
 
-  const loadTags = async () => {
+  const loadTags = useCallback(async () => {
     try {
       const data = await restaurantAPI.getTags();
       setTags(data || []);
     } catch (error) {
       alert(getErrorMessage(error, "Failed to load tags"));
     }
-  };
+  }, []);
 
   const loadRestaurants = async () => {
     try {
@@ -233,14 +234,14 @@ export default function GroupMode() {
     }
   };
 
-  const loadMembers = async (groupId) => {
+  const loadMembers = useCallback(async (groupId) => {
     try {
       const data = await groupAPI.getGroupMembers(groupId);
       setMembers(data || []);
     } catch (error) {
       alert(getErrorMessage(error, "Failed to load members"));
     }
-  };
+  }, []);
 
   const loadLeaderboardPreview = async () => {
     try {
@@ -252,21 +253,49 @@ export default function GroupMode() {
     }
   };
 
-  useEffect(() => {
-    loadGroups();
-    loadInvitations();
-    loadTags();
-    loadRestaurants();
-    loadLeaderboardPreview();
-  }, []);
+  const loadPendingLeaderConfirmations = useCallback(async () => {
+    if (!currentUserId) return;
+    try {
+      const data = await groupAPI.getPendingLeaderConfirmations(currentUserId);
+      setPendingLeaderConfirmations(Array.isArray(data) ? data : []);
+    } catch (error) {
+      console.error(error);
+      setPendingLeaderConfirmations([]);
+    }
+  }, [currentUserId]);
 
   useEffect(() => {
-    if (selectedGroup?.id) {
-      loadMembers(selectedGroup.id);
-    } else {
-      setMembers([]);
-    }
-  }, [selectedGroup]);
+    const initializeGroupMode = async () => {
+      await Promise.all([
+        loadGroups(),
+        loadInvitations(),
+        loadTags(),
+        loadRestaurants(),
+        loadLeaderboardPreview(),
+        loadPendingLeaderConfirmations(),
+      ]);
+    };
+
+    initializeGroupMode();
+  }, [
+    currentUserId,
+    loadGroups,
+    loadInvitations,
+    loadTags,
+    loadPendingLeaderConfirmations,
+  ]);
+
+  useEffect(() => {
+    const syncMembers = async () => {
+      if (selectedGroup?.id) {
+        await loadMembers(selectedGroup.id);
+      } else {
+        setMembers([]);
+      }
+    };
+
+    syncMembers();
+  }, [selectedGroup?.id, loadMembers]);
 
   useEffect(() => {
     if (!statusMessage) return;
@@ -458,15 +487,31 @@ export default function GroupMode() {
     }
   };
 
-  const handleConfirmGroupVisit = async () => {
-    if (!selectedGroup?.id || !sessionId) {
+  const handleConfirmGroupVisit = async (groupIdOverride, sessionIdOverride) => {
+    const targetGroupId = groupIdOverride || selectedGroup?.id;
+    const targetSessionId = sessionIdOverride || Number(sessionId);
+
+    if (!targetGroupId || !targetSessionId) {
       alert("Select a group and session first");
       return;
     }
 
     try {
-      const response = await groupAPI.confirmGroupVisitation(selectedGroup.id, Number(sessionId));
-      setResult((current) => current ? { ...current, leaderConfirmed: true } : current);
+      const response = await groupAPI.confirmGroupVisitation(targetGroupId, targetSessionId);
+      setResult((current) =>
+        current && Number(current.sessionId) === Number(targetSessionId)
+          ? {
+              ...current,
+              leaderConfirmed: true,
+              groupPoints: response.groupPoints,
+              restaurantPoints: response.restaurantPoints,
+              pointsAwarded: response.pointsAwarded,
+            }
+          : current
+      );
+      await loadGroups();
+      await loadLeaderboardPreview();
+      await loadPendingLeaderConfirmations();
       showToast(response.message || "Group visit confirmed");
     } catch (error) {
       alert(getErrorMessage(error, "Failed to confirm group visit"));
@@ -677,6 +722,86 @@ export default function GroupMode() {
                   </div>
                   <h3 className="mt-4 text-lg font-bold text-foreground">{group.groupName}</h3>
                   <p className="mt-2 text-sm text-muted-foreground">{group.memberCount || 0} active members</p>
+                </div>
+              ))
+            )}
+          </div>
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1, duration: 0.3 }}
+          className="mb-8 rounded-[28px] border border-primary/10 bg-white p-6 shadow-xl"
+        >
+          <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
+            <div>
+              <div className="inline-flex items-center gap-2 rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-emerald-700">
+                <BadgeCheck className="h-4 w-4" />
+                Leader confirmations
+              </div>
+              <h2 className="mt-3 text-2xl font-bold text-foreground">Visits waiting for final point allocation</h2>
+              <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
+                Once the restaurant confirms a group visit, the group leader confirms it here to award points to both the group and the restaurant.
+              </p>
+            </div>
+
+            <div className="flex items-center gap-3">
+              <SecondaryButton onClick={loadPendingLeaderConfirmations}>
+                Refresh
+              </SecondaryButton>
+              <Badge tone={pendingLeaderConfirmations.length > 0 ? "success" : "info"}>
+                {pendingLeaderConfirmations.length} pending
+              </Badge>
+            </div>
+          </div>
+
+          <div className="mt-6 grid gap-4">
+            {pendingLeaderConfirmations.length === 0 ? (
+              <div className="rounded-3xl border border-primary/10 bg-primary/5 p-5 text-sm text-muted-foreground">
+                No leader confirmations are waiting right now.
+              </div>
+            ) : (
+              pendingLeaderConfirmations.map((item) => (
+                <div
+                  key={`${item.groupId}-${item.sessionId}`}
+                  className="rounded-3xl border border-primary/10 bg-primary/5 p-5"
+                >
+                  <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                    <div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Badge tone="success">Restaurant confirmed</Badge>
+                        <Badge tone="info">{item.pointsAwarded || 0} points waiting</Badge>
+                      </div>
+                      <h3 className="mt-3 text-lg font-bold text-foreground">{item.groupName}</h3>
+                      <p className="mt-2 text-sm text-muted-foreground">
+                        Session #{item.sessionId} selected {item.winningRestaurantName}. Confirm this visit to add points to the weekly leaderboard.
+                      </p>
+                      <p className="mt-2 text-sm text-muted-foreground">
+                        {item.memberCount || 0} active members in this group
+                      </p>
+                    </div>
+
+                    <div className="flex flex-col gap-3 lg:items-end">
+                      <PrimaryButton
+                        onClick={() => handleConfirmGroupVisit(item.groupId, item.sessionId)}
+                      >
+                        <BadgeCheck className="h-4 w-4" />
+                        Confirm Visit
+                      </PrimaryButton>
+                      <SecondaryButton
+                        onClick={() => {
+                          const matchingGroup = groups.find((group) => group.id === item.groupId);
+                          if (matchingGroup) {
+                            setSelectedGroup(matchingGroup);
+                          }
+                          setSessionId(String(item.sessionId));
+                        }}
+                      >
+                        View Session
+                      </SecondaryButton>
+                    </div>
+                  </div>
                 </div>
               ))
             )}
@@ -1277,6 +1402,9 @@ export default function GroupMode() {
                   <Badge tone={result.leaderConfirmed ? "success" : "info"}>
                     {result.leaderConfirmed ? "Leader confirmed visit" : "Leader confirmation pending"}
                   </Badge>
+                  {result.pointsAwarded ? (
+                    <Badge tone="purple">{result.pointsAwarded} points awarded</Badge>
+                  ) : null}
                 </div>
 
                 {result.restaurantConfirmed && !result.leaderConfirmed && selectedGroup?.id && (
@@ -1284,6 +1412,19 @@ export default function GroupMode() {
                     <BadgeCheck className="h-4 w-4" />
                     Confirm Group Visit
                   </PrimaryButton>
+                )}
+
+                {result.leaderConfirmed && result.groupPoints !== undefined && (
+                  <div className="mt-5 grid gap-4 md:grid-cols-2">
+                    <div className="rounded-2xl border border-primary/10 bg-primary/5 p-4">
+                      <p className="text-sm text-muted-foreground">Updated Group Points</p>
+                      <p className="mt-1 text-lg font-semibold text-foreground">{result.groupPoints}</p>
+                    </div>
+                    <div className="rounded-2xl border border-primary/10 bg-primary/5 p-4">
+                      <p className="text-sm text-muted-foreground">Updated Restaurant Points</p>
+                      <p className="mt-1 text-lg font-semibold text-foreground">{result.restaurantPoints}</p>
+                    </div>
+                  </div>
                 )}
               </SectionCard>
             )}

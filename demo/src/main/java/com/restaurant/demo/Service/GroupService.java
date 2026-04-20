@@ -13,6 +13,7 @@ import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestTemplate;
 
 import com.restaurant.demo.Dto.CreateGroupRequest;
@@ -63,6 +64,12 @@ public class GroupService {
     private final UserRepository userRepository;
     private final RestaurantRepository restaurantRepository;
     private final TagRepository tagRepository;
+
+    private int getActiveMemberCount(Long groupId) {
+        return (int) groupMemberRepository.findByGroupId(groupId).stream()
+                .filter(member -> "ACTIVE".equalsIgnoreCase(member.getStatus()))
+                .count();
+    }
 
     public Group createGroup(CreateGroupRequest request) {
         User creator = userRepository.findById(request.getCreatedByUserId())
@@ -596,7 +603,7 @@ public class GroupService {
             item.put("groupId", group.getId());
             item.put("groupName", group.getGroupName());
             item.put("points", group.getPoints());
-            item.put("memberCount", groupMemberRepository.findByGroupId(group.getId()).size());
+            item.put("memberCount", getActiveMemberCount(group.getId()));
             leaderboard.add(item);
         }
         
@@ -627,12 +634,61 @@ public class GroupService {
         result.put("points", group.getPoints());
         result.put("rank", rank);
         result.put("isInTopTen", rank <= 10);
-        result.put("memberCount", groupMemberRepository.findByGroupId(groupId).size());
+        result.put("memberCount", getActiveMemberCount(groupId));
         
         return result;
     }
 
+    public List<Map<String, Object>> getPendingLeaderConfirmations(Long userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        List<GroupMember> memberships = groupMemberRepository.findByUser(user);
+        List<Map<String, Object>> pending = new ArrayList<>();
+
+        for (GroupMember membership : memberships) {
+            if (!"ACTIVE".equalsIgnoreCase(membership.getStatus())
+                    || !"LEADER".equalsIgnoreCase(membership.getRole())) {
+                continue;
+            }
+
+            Group group = membership.getGroup();
+            List<GroupSession> sessions = groupSessionRepository.findByGroup(group);
+            for (GroupSession session : sessions) {
+                if (session.getWinningRestaurant() == null) {
+                    continue;
+                }
+                if (!Boolean.TRUE.equals(session.getRestaurantConfirmed())
+                        || Boolean.TRUE.equals(session.getLeaderConfirmed())) {
+                    continue;
+                }
+
+                Map<String, Object> item = new HashMap<>();
+                item.put("sessionId", session.getId());
+                item.put("groupId", group.getId());
+                item.put("groupName", group.getGroupName());
+                item.put("winningRestaurantId", session.getWinningRestaurant().getId());
+                item.put("winningRestaurantName", session.getWinningRestaurant().getName());
+                item.put("restaurantConfirmed", session.getRestaurantConfirmed());
+                item.put("leaderConfirmed", session.getLeaderConfirmed());
+                item.put("memberCount", getActiveMemberCount(group.getId()));
+                item.put("pointsAwarded", getActiveMemberCount(group.getId()));
+                item.put("createdAt", session.getCreatedAt());
+                pending.add(item);
+            }
+        }
+
+        pending.sort((left, right) -> {
+            LocalDateTime leftCreatedAt = (LocalDateTime) left.get("createdAt");
+            LocalDateTime rightCreatedAt = (LocalDateTime) right.get("createdAt");
+            return rightCreatedAt.compareTo(leftCreatedAt);
+        });
+
+        return pending;
+    }
+
     // Group leader confirms the visitation, triggering points award to both group and restaurant
+    @Transactional
     public Map<String, Object> confirmGroupVisitation(Long groupId, Long sessionId) {
         GroupSession session = groupSessionRepository.findById(sessionId)
                 .orElseThrow(() -> new RuntimeException("Session not found"));
@@ -646,7 +702,7 @@ public class GroupService {
         }
 
         if (Boolean.TRUE.equals(session.getLeaderConfirmed())) {
-            int memberCount = groupMemberRepository.findByGroupId(groupId).size();
+            int memberCount = getActiveMemberCount(groupId);
             return Map.of(
                     "message", "This group visit has already been confirmed.",
                     "groupPoints", session.getGroup().getPoints(),
@@ -660,7 +716,7 @@ public class GroupService {
 
         // Award points: count = number of group members
         Group group = session.getGroup();
-        int memberCount = groupMemberRepository.findByGroupId(groupId).size();
+        int memberCount = getActiveMemberCount(groupId);
         
         group.setPoints(group.getPoints() + memberCount);
         groupRepository.save(group);
