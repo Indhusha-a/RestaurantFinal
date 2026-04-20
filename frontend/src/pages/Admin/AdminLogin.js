@@ -124,7 +124,7 @@ export default function Login() {
         </motion.button>
 
         <p className="text-sm text-muted-foreground text-center">
-          Default demo admin: <span className="font-semibold">admin</span> / <span className="font-semibold">admin123</span>
+           <span className="font-semibold"></span> / <span className="font-semibold"></span>
         </p>
       </form>
     </SplitAuthLayout>

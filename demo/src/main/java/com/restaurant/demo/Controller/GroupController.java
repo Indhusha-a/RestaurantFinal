@@ -64,6 +64,11 @@ public class GroupController {
         return ResponseEntity.ok(groupService.getInvitationsForUser(userId));
     }
 
+    @GetMapping("/leader-confirmations/{userId}")
+    public ResponseEntity<List<Map<String, Object>>> getPendingLeaderConfirmations(@PathVariable Long userId) {
+        return ResponseEntity.ok(groupService.getPendingLeaderConfirmations(userId));
+    }
+
     @GetMapping("/{groupId}/members")
     public ResponseEntity<List<GroupMember>> getMembersByGroup(@PathVariable Long groupId) {
         return ResponseEntity.ok(groupService.getMembersByGroup(groupId));
