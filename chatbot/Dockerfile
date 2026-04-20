@@ -6,7 +6,11 @@ ENV PYTHONUNBUFFERED=1
 WORKDIR /app
 
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+
+#  Install CPU-only torch FIRST (prevents CUDA downloads)
+RUN pip install --no-cache-dir --default-timeout=100 \
+    torch --index-url https://download.pytorch.org/whl/cpu && \
+    pip install --no-cache-dir --default-timeout=100 -r requirements.txt
 
 COPY app ./app
 

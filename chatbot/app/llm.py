@@ -55,7 +55,7 @@ def ask_llm(user_query: str, context: str, history: list[dict[str, Any]]) -> str
         temperature=0.3,
     )
 
-    if not response.choices:
-        return "I couldn't find that information."
+    if not DEEPSEEK_API_KEY:
+        return f"[DEBUG MODE]\n\nContext:\n{context}"
 
     return response.choices[0].message.content

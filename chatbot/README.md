@@ -14,6 +14,8 @@ One-time sync:
 
 ```bash
 docker compose -f docker-compose.chatbot.yml run --rm chatbot python -m app.ingest
+
+docker exec -it restaurant-chatbot python -m app.ingest
 ```
 
 Periodic sync:

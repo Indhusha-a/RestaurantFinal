@@ -26,6 +26,12 @@ class ChatRequest(BaseModel):
     history: list[dict] = Field(default_factory=list)
 
 
+class RetrieveRequest(BaseModel):
+    query: str
+    top_k: int = 5
+    score_threshold: float = 0.45
+
+
 @app.get("/health")
 def health():
     return {"status": "ok"}
@@ -180,4 +186,23 @@ def chat(request: ChatRequest):
     return {
         "answer": answer,
         "retrieved_chunks": chunks,
+    }
+
+
+@app.post("/retrieve")
+def retrieve(request: RetrieveRequest):
+    query = request.query.strip()
+    chunks = retrieve_context(
+        query=query,
+        top_k=request.top_k,
+        score_threshold=request.score_threshold,
+    )
+    context = build_context_string(chunks)
+    return {
+        "query": query,
+        "top_k": request.top_k,
+        "score_threshold": request.score_threshold,
+        "result_count": len(chunks),
+        "retrieved_chunks": chunks,
+        "context": context,
     }
