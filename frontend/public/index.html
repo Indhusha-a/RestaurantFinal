@@ -31,21 +31,6 @@
   <body>
     <noscript>You need to enable JavaScript to run this app.</noscript>
     <div id="root"></div>
-    <div id="chatbot-widget"></div>
-    <script>
-      (function () {
-        const mountNode = document.getElementById("chatbot-widget");
-        if (!mountNode) return;
-
-        const widget = document.createElement("iframe");
-        widget.src = "http://localhost:8100/widget";
-        widget.style =
-          "position:fixed; bottom:20px; right:20px; width:370px; height:500px; border:none; z-index:9999; border-radius:16px; box-shadow:0 4px 24px rgba(0,0,0,0.15); background:#fff;";
-        widget.title = "Restaurant Chatbot";
-
-        mountNode.appendChild(widget);
-      })();
-    </script>
     <!--
       This HTML file is a template.
       If you open it directly in the browser, you will see an empty page.
