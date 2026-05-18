@@ -14,6 +14,7 @@ import RestaurantPortal from "./pages/RestaurantPortal";
 import RestaurantList from "./pages/RestaurantList";
 
 import GroupLeaderboard from "./pages/GroupLeaderboard";
+import ChatbotPage from "./pages/ChatbotPage";
 import AdminDashboard from "./pages/Admin/AdminDashboard";
 import ManageRestaurants from "./pages/Admin/ManageRestaurants";
 import RestaurantApproval from "./pages/Admin/RestaurantApproval";
@@ -34,6 +35,7 @@ function App() {
         <Route path="/dashboard/explore" element={<ExploreMode />} />
         <Route path="/dashboard/group" element={<GroupMode />} />
         <Route path="/dashboard/leaderboard" element={<GroupLeaderboard />} />
+        <Route path="/chatbot" element={<ChatbotPage />} />
         <Route path="/profile" element={<Profile />} />
 
         {/* Admin routes */}

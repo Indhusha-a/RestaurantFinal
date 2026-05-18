@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Search, Sparkles, Star, MapPin, Phone, Loader, AlertCircle, Navigation, Check, XCircle } from "lucide-react";
+import { Search, Sparkles, Star, MapPin, Phone, Globe, Loader, AlertCircle, Navigation, Check, XCircle } from "lucide-react";
 import API from "../services/api";
 import { useNavigate } from "react-router-dom";
 
@@ -508,94 +508,124 @@ export default function ExploreMode() {
             onClick={closeSelectionModal}
           >
             <motion.div
-              initial={{ scale: 0.96, y: 20 }}
+              initial={{ scale: 0.9, y: 20 }}
               animate={{ scale: 1, y: 0 }}
-              exit={{ scale: 0.96, y: 20 }}
-              className="w-full max-w-xl overflow-hidden rounded-[2rem] border border-border bg-card shadow-2xl"
+              exit={{ scale: 0.9, y: 20 }}
+              className="bg-card rounded-3xl max-w-2xl w-full max-h-[90vh] overflow-y-auto border border-border"
               onClick={(e) => e.stopPropagation()}
             >
-              <div className="flex items-start justify-between border-b border-border/60 px-6 py-5">
+              <div className="p-6 border-b border-border flex justify-between items-start">
                 <div>
-                  <p className="text-sm uppercase tracking-[0.2em] text-muted-foreground">Confirm Visit</p>
-                  <h2 className="mt-1 text-2xl font-semibold">{selectedRestaurant.name}</h2>
-                  <p className="mt-2 text-sm text-muted-foreground">
-                    This will use the same visit-selection flow as Individual Mode.
-                  </p>
+                  <h2 className="text-2xl font-display font-bold mb-1">{selectedRestaurant.name}</h2>
+                  <p className="text-muted-foreground text-sm">{selectedRestaurant.description}</p>
                 </div>
                 <button
                   onClick={closeSelectionModal}
                   disabled={submitting}
-                  className="rounded-full p-2 transition hover:bg-muted disabled:opacity-50"
+                  className="p-2 hover:bg-muted rounded-full transition-colors disabled:opacity-50"
                 >
                   <XCircle className="h-6 w-6" />
                 </button>
               </div>
 
-              <div className="space-y-4 px-6 py-6">
+              <div className="p-6">
                 {isConfirmed && (
-                  <div className="flex items-start gap-3 rounded-2xl border border-green-200 bg-green-50 p-4 text-green-700">
-                    <Check className="mt-0.5 h-5 w-5 shrink-0" />
+                  <motion.div
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="mb-6 p-4 bg-green-50 border border-green-200 rounded-xl flex items-center gap-3 text-green-700"
+                  >
+                    <Check className="w-6 h-6 flex-shrink-0" />
                     <div>
-                      <p className="font-medium">Selection confirmed</p>
+                      <p className="font-semibold">Selection Confirmed!</p>
                       <p className="text-sm">{successMessage}</p>
                     </div>
-                  </div>
+                  </motion.div>
                 )}
 
-                <div className="rounded-2xl border border-border/60 bg-background p-4">
-                  <h3 className="text-lg font-medium">{selectedRestaurant.name}</h3>
-                  <p className="mt-2 text-sm text-muted-foreground">
-                    {selectedRestaurant.description}
-                  </p>
-                  <div className="mt-4 space-y-2 text-sm text-muted-foreground">
-                    <div className="flex items-center gap-2">
-                      <MapPin className="h-4 w-4" />
-                      {selectedRestaurant.address || "Colombo"}
+                <div className={`space-y-3 ${isConfirmed ? "p-4 bg-gradient-to-r from-orange-50 to-pink-50 rounded-2xl border border-primary/20" : ""}`}>
+                  {isConfirmed && (
+                    <p className="text-sm font-semibold text-primary mb-2">Here's how to reach them:</p>
+                  )}
+
+                  <a
+                    href={selectedRestaurant.locationLink || "#"}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-3 p-4 bg-white rounded-xl border border-primary/30 hover:border-primary hover:bg-primary/5 transition-all group cursor-pointer"
+                  >
+                    <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center group-hover:bg-primary/20 transition-colors">
+                      <Navigation className="w-5 h-5 text-primary" />
                     </div>
-                    <div className="flex items-center gap-2">
-                      <Phone className="h-4 w-4" />
-                      {selectedRestaurant.phone || "N/A"}
+                    <div className="flex-1">
+                      <p className="font-medium">Google Maps</p>
+                      <p className="text-sm text-muted-foreground">{selectedRestaurant.address || "View location"}</p>
+                    </div>
+                    <Globe className="w-5 h-5 text-muted-foreground group-hover:text-primary" />
+                  </a>
+
+                  <a
+                    href={selectedRestaurant.phone ? `tel:${selectedRestaurant.phone}` : "#"}
+                    className="flex items-center gap-3 p-4 bg-white rounded-xl border border-primary/30 hover:border-primary hover:bg-primary/5 transition-all group cursor-pointer"
+                  >
+                    <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center group-hover:bg-primary/20 transition-colors">
+                      <Phone className="w-5 h-5 text-primary" />
+                    </div>
+                    <div className="flex-1">
+                      <p className="font-medium">Phone</p>
+                      <p className="text-sm text-muted-foreground">{selectedRestaurant.phone || "Not available"}</p>
+                    </div>
+                  </a>
+
+                  <div className="flex items-center gap-3 p-4 bg-white rounded-xl border border-border">
+                    <div className="w-10 h-10 bg-muted/50 rounded-full flex items-center justify-center">
+                      <MapPin className="w-5 h-5 text-muted-foreground" />
+                    </div>
+                    <div className="flex-1">
+                      <p className="font-medium">Address</p>
+                      <p className="text-sm text-muted-foreground">{selectedRestaurant.address || "Address not available"}</p>
                     </div>
                   </div>
                 </div>
 
-                <div className="flex gap-3">
+                <div className="flex gap-3 mt-6">
                   {isConfirmed ? (
                     <motion.button
-                      whileHover={{ scale: 1.01 }}
-                      whileTap={{ scale: 0.99 }}
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
                       onClick={handleFinishSelection}
-                      className="flex-1 rounded-2xl bg-gradient-to-r from-orange-500 to-pink-500 px-4 py-3 font-medium text-white"
+                      className="flex-1 py-4 bg-gradient-to-r from-orange-500 to-pink-500 text-white rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all flex items-center justify-center gap-2"
                     >
+                      <Check className="w-5 h-5" />
                       Finish
                     </motion.button>
                   ) : (
                     <>
                       <motion.button
-                        whileHover={{ scale: 1.01 }}
-                        whileTap={{ scale: 0.99 }}
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
                         onClick={handleConfirmSelection}
                         disabled={submitting}
-                        className="flex flex-1 items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-orange-500 to-pink-500 px-4 py-3 font-medium text-white disabled:opacity-50"
+                        className="flex-1 py-4 bg-gradient-to-r from-orange-500 to-pink-500 text-white rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all disabled:opacity-50 flex items-center justify-center gap-2"
                       >
                         {submitting ? (
                           <>
-                            <Loader className="h-4 w-4 animate-spin" />
-                            Confirming...
+                            <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                            <span>Confirming...</span>
                           </>
                         ) : (
                           <>
-                            <Check className="h-4 w-4" />
+                            <Check className="w-5 h-5" />
                             Confirm Selection
                           </>
                         )}
                       </motion.button>
                       <motion.button
-                        whileHover={{ scale: 1.01 }}
-                        whileTap={{ scale: 0.99 }}
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
                         onClick={closeSelectionModal}
                         disabled={submitting}
-                        className="rounded-2xl border border-border px-4 py-3 font-medium transition hover:bg-muted disabled:opacity-50"
+                        className="flex-1 py-4 border border-border rounded-xl font-semibold hover:bg-muted transition-all disabled:opacity-50"
                       >
                         Cancel
                       </motion.button>
